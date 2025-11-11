@@ -23,7 +23,7 @@ const Header = () => {
       transition={{ type: 'spring', stiffness: 100, damping: 15 }}
       className="navbar p-4 bg-base-100 shadow"
     >
-      <div className="flex-1">
+      <div className="flex-1 flex justify-between">
         <div className="flex items-end gap-2">
           <Link to="/">
             <motion.img
@@ -54,7 +54,7 @@ const Header = () => {
                     to={to}
                     className={clsx(
                       'btn btn-ghost btn-sm transition-colors',
-                      isActive && 'btn-active text-primary'
+                      isActive && 'btn-active text-primary',
                     )}
                   >
                     {label}
