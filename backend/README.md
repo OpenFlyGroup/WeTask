@@ -1,98 +1,191 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Task Tracker Backend — микросервисная архитектура (NestJS)
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Полноценный backend для таск‑трекера на NestJS с микросервисами и API Gateway.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## 🏗️ Архитектура
 
-## Description
+- API Gateway — HTTP/WebSocket шлюз (порт 3000), Swagger: `/api/docs`
+- Auth Service — аутентификация и авторизация
+- Users Service — управление пользователями
+- Teams Service — управление командами
+- Boards Service — доски и колонки
+- Tasks Service — задачи, комментарии, логи активности
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## 🛠️ Технологии
 
-## Project setup
+- NestJS + TypeScript
+- TypeORM (PostgreSQL)
+- Mongoose (MongoDB)
+- RabbitMQ (межсервисное взаимодействие)
+- JWT (авторизация)
+- WebSocket (realtime)
+- Docker Compose (инфраструктура)
 
+## 📋 Требования
+
+- Node.js 20+
+- Docker и Docker Compose
+- pnpm (или npm)
+
+## 🚀 Быстрый старт (Docker)
+
+1) Установите зависимости локально (опционально, для разработки):
 ```bash
-$ pnpm install
+cd backend
+pnpm install
+# или
+npm install
 ```
 
-## Compile and run the project
-
+2) Запустите инфраструктуру и сервисы:
 ```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+docker-compose up -d
 ```
 
-## Run tests
+Будут подняты:
+- PostgreSQL (5432)
+- MongoDB (27017)
+- RabbitMQ (5672, 15672 — management UI)
+- Все микросервисы
 
+3) Swagger UI:
+- API Gateway: `http://localhost:3000/api/docs`
+  - Ассеты Swagger обслуживаются локально (без Webpack и без внешнего CDN).
+
+## 🔧 Локальная разработка (без Docker)
+
+1) Поднимите локально PostgreSQL, MongoDB и RabbitMQ  
+2) Настройте `.env` для сервисов  
+3) Запустите сервисы:
 ```bash
-# unit tests
-$ pnpm run test
+# В отдельных терминалах
+pnpm start:dev:gateway
+pnpm start:dev:auth
+pnpm start:dev:users
+pnpm start:dev:teams
+pnpm start:dev:boards
+pnpm start:dev:tasks
 
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+# Или все сразу (нужен concurrently)
+pnpm start:all
 ```
 
-## Deployment
+## 📡 Основные API
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+Auth (публичные):
+- POST `/api/auth/register` — регистрация
+- POST `/api/auth/login` — вход
+- POST `/api/auth/refresh` — обновление токена
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Users (JWT):
+- GET `/api/users/me` — текущий пользователь
+- GET `/api/users/:id` — пользователь по ID
+- PATCH `/api/users/:id` — обновление профиля
+
+Teams (JWT):
+- GET `/api/teams` — список команд
+- POST `/api/teams` — создать команду
+- GET `/api/teams/:id` — команда по ID
+- POST `/api/teams/:id/members` — добавить участника
+- DELETE `/api/teams/:id/members/:userId` — удалить участника
+
+Boards (JWT):
+- GET `/api/boards` — доски пользователя
+- POST `/api/boards` — создать доску
+- GET `/api/boards/:id` — доска с колонками
+- PUT `/api/boards/:id` — обновить доску
+- DELETE `/api/boards/:id` — удалить доску
+
+Columns (JWT):
+- POST `/api/columns` — создать колонку
+- GET `/api/columns/board/:boardId` — колонки доски
+- PUT `/api/columns/:id` — обновить колонку
+- DELETE `/api/columns/:id` — удалить колонку
+
+Tasks (JWT):
+- POST `/api/tasks` — создать задачу
+- GET `/api/tasks/:id` — получить задачу
+- GET `/api/tasks/board/:boardId` — задачи доски
+- PUT `/api/tasks/:id` — обновить задачу
+- DELETE `/api/tasks/:id` — удалить задачу
+- PUT `/api/tasks/:id/move` — переместить задачу
+- POST `/api/tasks/:id/comment` — добавить комментарий
+- GET `/api/tasks/:id/comments` — комментарии задачи
+
+## 🔌 WebSocket
+
+Подключение: `ws://localhost:3000`
+
+События для подписки:
+- `join:board`, `leave:board`, `join:team`
+
+События от сервера:
+- `task.created`, `task.updated`, `task.deleted`
+- `board.updated`
+- `team.memberAdded`, `team.memberRemoved`
+
+## 🗄️ Базы данных
+
+PostgreSQL (TypeORM):
+- пользователи, команды, доски, колонки, задачи, refresh‑токены
+
+MongoDB (Mongoose):
+- комментарии к задачам
+- логи активности
+
+## 🐰 RabbitMQ
+
+RPC‑взаимодействие между сервисами.  
+Management UI: `http://localhost:15672` (admin/admin123)
+
+## 🧪 Тестирование
 
 ```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+# Unit
+pnpm test
+# Coverage
+pnpm test:cov
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## 📦 Структура проекта
 
-## Resources
+```
+backend/
+├── apps/
+│   ├── api-gateway/      # HTTP/WebSocket Gateway
+│   ├── auth-service/     # Аутентификация
+│   ├── users-service/    # Пользователи
+│   ├── teams-service/    # Команды
+│   ├── boards-service/   # Доски и колонки
+│   └── tasks-service/    # Задачи и комментарии
+├── libs/
+│   ├── common/           # Общие интерфейсы и DTO
+│   └── database/         # TypeORM entities и утилиты БД
+├── docker-compose.yml    # Инфраструктура
+└── package.json
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+## 🔐 Безопасность
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+- Короткоживущие access‑токены (JWT) + refresh‑токены
+- Хэширование паролей (bcrypt)
+- Валидация входных данных (class-validator)
 
-## Support
+## 🐛 Отладка
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```bash
+# Логи сервисов
+docker-compose logs -f api-gateway
+docker-compose logs -f auth-service
+# и т.д.
+```
 
-## Stay in touch
+## 📚 Ссылки
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+- NestJS: https://docs.nestjs.com/
+- RabbitMQ: https://www.rabbitmq.com/documentation.html
+- MongoDB: https://docs.mongodb.com/
 
-## License
+## 🤝 Вклад
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Приветствуются pull requests и issues!

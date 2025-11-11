@@ -1,0 +1,214 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: kanban_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-kanban}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kanban123}
+      POSTGRES_DB: ${POSTGRES_DB:-kanban}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - kanban_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kanban"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongodb:
+    image: mongo:8
+    container_name: kanban_mongodb
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-kanban}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - kanban_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:4.2-management-alpine
+    container_name: kanban_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-admin123}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - kanban_network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api-gateway
+    container_name: kanban_api_gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://kanban:kanban123@postgres:5432/kanban
+      - MONGODB_URI=mongodb://mongodb:27017/kanban
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      - PORT=3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - kanban_network
+    volumes:
+      - ./apps/api-gateway:/app/apps/api-gateway
+      - ./libs:/app/libs
+    command: npm run start:dev:gateway
+    restart: unless-stopped
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: auth-service
+    container_name: kanban_auth_service
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://kanban:kanban123@postgres:5432/kanban
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - kanban_network
+    volumes:
+      - ./apps/auth-service:/app/apps/auth-service
+      - ./libs:/app/libs
+    command: npm run start:dev:auth
+    restart: unless-stopped
+
+  users-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: users-service
+    container_name: kanban_users_service
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://kanban:kanban123@postgres:5432/kanban
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - kanban_network
+    volumes:
+      - ./apps/users-service:/app/apps/users-service
+      - ./libs:/app/libs
+    command: npm run start:dev:users
+    restart: unless-stopped
+
+  teams-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: teams-service
+    container_name: kanban_teams_service
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://kanban:kanban123@postgres:5432/kanban
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - kanban_network
+    volumes:
+      - ./apps/teams-service:/app/apps/teams-service
+      - ./libs:/app/libs
+    command: npm run start:dev:teams
+    restart: unless-stopped
+
+  boards-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: boards-service
+    container_name: kanban_boards_service
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://kanban:kanban123@postgres:5432/kanban
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - kanban_network
+    volumes:
+      - ./apps/boards-service:/app/apps/boards-service
+      - ./libs:/app/libs
+    command: npm run start:dev:boards
+    restart: unless-stopped
+
+  tasks-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: tasks-service
+    container_name: kanban_tasks_service
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://kanban:kanban123@postgres:5432/kanban
+      - MONGODB_URI=mongodb://mongodb:27017/kanban
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - kanban_network
+    volumes:
+      - ./apps/tasks-service:/app/apps/tasks-service
+      - ./libs:/app/libs
+    command: npm run start:dev:tasks
+    restart: unless-stopped
+
+networks:
+  kanban_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  mongodb_data:
+  rabbitmq_data:
+
