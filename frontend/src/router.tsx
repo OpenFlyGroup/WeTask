@@ -27,10 +27,14 @@ export const getRouter = () => {
   setupRouterSsrQueryIntegration({ router, queryClient: rqContext.queryClient })
 
   if (!router.isServer) {
+    try {
     Sentry.init({
       dsn: import.meta.env.VITE_SENTRY_DSN,
       integrations: [],
     })
+    } catch {
+      // In restrictive environments (e.g., blocked storage), ignore Sentry init errors
+    }
   }
 
   return router

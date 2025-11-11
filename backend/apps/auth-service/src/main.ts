@@ -13,11 +13,13 @@ async function bootstrap() {
         queueOptions: {
           durable: true,
         },
+        noAck: false,
       },
     },
   );
 
   await app.listen();
+  await new Promise((resolve) => setTimeout(resolve, 500));
   console.log('Auth Service is listening on RabbitMQ');
 }
 bootstrap();

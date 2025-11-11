@@ -5,8 +5,6 @@ import {
   HttpCode,
   HttpStatus,
   HttpException,
-  ConflictException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';

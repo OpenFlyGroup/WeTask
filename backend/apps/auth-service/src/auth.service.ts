@@ -113,10 +113,11 @@ export class AuthService {
   async validateToken(tokenOrUserId: string | number) {
     try {
       // Если передан числовой ID пользователя (из JWT payload)
-      const userId = typeof tokenOrUserId === 'number' 
-        ? tokenOrUserId 
-        : parseInt(tokenOrUserId, 10);
-      
+      const userId =
+        typeof tokenOrUserId === 'number'
+          ? tokenOrUserId
+          : parseInt(tokenOrUserId, 10);
+
       if (!isNaN(userId)) {
         const user = await this.database.user.findOne({
           where: { id: userId },

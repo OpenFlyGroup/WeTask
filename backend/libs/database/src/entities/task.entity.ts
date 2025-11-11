@@ -25,7 +25,7 @@ export class Task {
   status: string;
 
   @TypeOrmColumn({ nullable: true, default: 'medium' })
-  priority: string | null; // low, medium, high
+  priority: string | null;
 
   @TypeOrmColumn()
   columnId: number;

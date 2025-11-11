@@ -5,7 +5,10 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { ApiGatewayModule } from './api-gateway.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(ApiGatewayModule);
+  const app = await NestFactory.create<NestExpressApplication>(
+    ApiGatewayModule,
+    { cors: true },
+  );
 
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
