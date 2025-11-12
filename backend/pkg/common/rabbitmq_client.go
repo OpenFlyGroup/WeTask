@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	"github.com/streadway/amqp"
@@ -15,17 +14,13 @@ var RabbitMQChannel *amqp.Channel
 
 // ? InitRabbitMQ initializes RabbitMQ connection
 func InitRabbitMQ() error {
-	url := os.Getenv("RABBITMQ_URL")
-	if url == "" {
-		url = fmt.Sprintf(
-			"amqp://%s:%s@%s:%s/",
-			getEnv("RABBITMQ_USER", "admin"),
-			getEnv("RABBITMQ_PASSWORD", "admin123"),
-			getEnv("RABBITMQ_HOST", "localhost"),
-			getEnv("RABBITMQ_PORT", "5672"),
-		)
-	}
-
+	url := fmt.Sprintf(
+		"amqp://%s:%s@%s:%s/",
+		getEnv("RABBITMQ_USER", "admin"),
+		getEnv("RABBITMQ_PASSWORD", "admin123"),
+		getEnv("RABBITMQ_HOST", "localhost"),
+		getEnv("RABBITMQ_PORT", "5672"),
+	)
 	var err error
 	RabbitMQConn, err = amqp.Dial(url)
 	if err != nil {

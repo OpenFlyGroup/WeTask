@@ -6,8 +6,8 @@ services:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-admin123}
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
@@ -121,12 +121,11 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
       - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
       - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
       - RABBITMQ_USER=${RABBITMQ_USER:-admin}
       - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-admin123}
-      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      - JWT_SECRET=${JWT_SECRET:-SECRET_KEY}
       - PORT=3000
     depends_on:
       rabbitmq:
@@ -150,12 +149,11 @@ services:
       - DB_USER=${AUTH_DB_USER:-auth_user}
       - DB_PASSWORD=${AUTH_DB_PASSWORD:-auth_pass123}
       - DB_NAME=${AUTH_DB_NAME:-auth_db}
-      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
       - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
       - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
       - RABBITMQ_USER=${RABBITMQ_USER:-admin}
       - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-admin123}
-      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      - JWT_SECRET=${JWT_SECRET:-SECRET_KEY}
     depends_on:
       postgres-auth:
         condition: service_healthy
@@ -199,7 +197,6 @@ services:
       - DB_USER=${USERS_DB_USER:-users_user}
       - DB_PASSWORD=${USERS_DB_PASSWORD:-users_pass123}
       - DB_NAME=${USERS_DB_NAME:-users_db}
-      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
       - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
       - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
       - RABBITMQ_USER=${RABBITMQ_USER:-admin}
@@ -228,7 +225,6 @@ services:
       - DB_USER=${TEAMS_DB_USER:-teams_user}
       - DB_PASSWORD=${TEAMS_DB_PASSWORD:-teams_pass123}
       - DB_NAME=${TEAMS_DB_NAME:-teams_db}
-      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
       - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
       - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
       - RABBITMQ_USER=${RABBITMQ_USER:-admin}
@@ -257,7 +253,6 @@ services:
       - DB_USER=${BOARDS_DB_USER:-boards_user}
       - DB_PASSWORD=${BOARDS_DB_PASSWORD:-boards_pass123}
       - DB_NAME=${BOARDS_DB_NAME:-boards_db}
-      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
       - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
       - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
       - RABBITMQ_USER=${RABBITMQ_USER:-admin}
@@ -290,7 +285,6 @@ services:
       - MONGO_HOST=${TASKS_MONGO_HOST:-mongodb-tasks}
       - MONGO_PORT=${TASKS_MONGO_PORT:-27017}
       - MONGO_DB=${TASKS_MONGO_DB:-tasks_mongo}
-      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
       - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
       - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
       - RABBITMQ_USER=${RABBITMQ_USER:-admin}

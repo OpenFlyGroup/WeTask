@@ -8,7 +8,6 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/joho/godotenv"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
@@ -43,11 +42,6 @@ var upgrader = websocket.Upgrader{
 }
 
 func main() {
-	// ? Load env variables
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found")
-	}
-
 	// ? Init RabbitMQ
 	if err := common.InitRabbitMQ(); err != nil {
 		log.Fatal("Failed to initialize RabbitMQ:", err)
