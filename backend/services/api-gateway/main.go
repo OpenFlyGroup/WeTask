@@ -14,7 +14,7 @@ import (
 )
 
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
+	CheckOrigin: func(router *http.Request) bool {
 		return true
 	},
 }
@@ -34,7 +34,7 @@ func main() {
 	// ? Init JWT
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
-		jwtSecret = "your-super-secret-jwt-key-change-in-production"
+		jwtSecret = "!!! PUT THIS IN ENV FILE !!!"
 	}
 	common.InitJWT(jwtSecret)
 
@@ -92,8 +92,8 @@ func main() {
 	go hub.Run()
 
 	// ? Set up routes
-	r := gin.Default()
-	r.Use(cors.New(cors.Config{
+	router := gin.Default()
+	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
@@ -101,7 +101,7 @@ func main() {
 		AllowCredentials: true,
 	}))
 
-	api := r.Group("/api")
+	api := router.Group("/api")
 	{
 		// ? Auth routes (public)
 		auth := api.Group("/auth")
@@ -168,7 +168,7 @@ func main() {
 	}
 
 	// ? WebSocket endpoint
-	r.GET("/ws", func(c *gin.Context) {
+	router.GET("/ws", func(c *gin.Context) {
 		handleWebSocket(c, hub)
 	})
 
@@ -179,5 +179,5 @@ func main() {
 
 	log.Printf("API Gateway is running on http: // * localhost:%s/api", port)
 	log.Printf("WebSocket is available on ws: // * localhost:%s/ws", port)
-	r.Run(":" + port)
+	router.Run(":" + port)
 }

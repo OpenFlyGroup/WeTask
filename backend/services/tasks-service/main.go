@@ -17,33 +17,33 @@ import (
 )
 
 func main() {
-	// Load environment variables
+	// ? Load environment variables
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found")
 	}
 
-	// Initialize database
+	// ? Initialize database
 	if err := common.InitPostgreSQL(); err != nil {
 		log.Fatal("Failed to initialize PostgreSQL:", err)
 	}
 	
-	// Migrate tasks models
+	// ? Migrate tasks models
 	if err := common.MigrateTasksModels(); err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}
 
-	// Initialize MongoDB
+	// ? Initialize MongoDB
 	if err := common.InitMongoDB(); err != nil {
 		log.Fatal("Failed to initialize MongoDB:", err)
 	}
 
-	// Initialize RabbitMQ
+	// ? Initialize RabbitMQ
 	if err := common.InitRabbitMQ(); err != nil {
 		log.Fatal("Failed to initialize RabbitMQ:", err)
 	}
 	defer common.CloseRabbitMQ()
 
-	// Declare queues
+	// ? Declare queues
 	queues := []string{
 		common.TasksCreate,
 		common.TasksGetByID,
@@ -57,28 +57,28 @@ func main() {
 
 	for _, queue := range queues {
 		_, err := common.RabbitMQChannel.QueueDeclare(
-			queue, // name
-			true,  // durable
-			false, // delete when unused
-			false, // exclusive
-			false, // no-wait
-			nil,   // arguments
+			queue, // * name
+			true,  // * durable
+			false, // * delete when unused
+			false, // * exclusive
+			false, // * no-wait
+			nil,   // * arguments
 		)
 		if err != nil {
 			log.Fatal("Failed to declare queue:", err)
 		}
 	}
 
-	// Start consuming messages
+	// ? Start consuming messages
 	for _, queue := range queues {
 		msgs, err := common.RabbitMQChannel.Consume(
-			queue, // queue
-			"",    // consumer
-			false, // auto-ack
-			false, // exclusive
-			false, // no-local
-			false, // no-wait
-			nil,   // args
+			queue, // * queue
+			"",    // * consumer
+			false, // * auto-ack
+			false, // * exclusive
+			false, // * no-local
+			false, // * no-wait
+			nil,   // * args
 		)
 		if err != nil {
 			log.Fatal("Failed to register consumer:", err)
@@ -88,7 +88,7 @@ func main() {
 	}
 
 	log.Println("Tasks Service is running...")
-	select {} // Keep running
+	select {} // ? Keep running
 }
 
 func handleMessages(queue string, msgs <-chan amqp.Delivery) {
@@ -158,14 +158,14 @@ func handleMessages(queue string, msgs <-chan amqp.Delivery) {
 			}
 		}
 
-		// Send response
+		// ? Send response
 		responseBody, _ := json.Marshal(response)
 		d.Ack(false)
 		common.RabbitMQChannel.Publish(
-			"",        // exchange
-			d.ReplyTo, // routing key
-			false,     // mandatory
-			false,     // immediate
+			"",        // * exchange
+			d.ReplyTo, // * routing key
+			false,     // * mandatory
+			false,     // * immediate
 			amqp.Publishing{
 				ContentType:   "application/json",
 				CorrelationId: d.CorrelationId,
@@ -208,11 +208,11 @@ func handleCreateTask(data map[string]interface{}) common.RPCResponse {
 		return common.RPCResponse{Success: false, Error: "Failed to create task", StatusCode: 500}
 	}
 
-	// Get column to find board ID
+	// ? Get column to find board ID
 	var column models.Column
 	common.DB.First(&column, task.ColumnID)
 
-	// Publish event
+	// ? Publish event
 	common.PublishEvent(common.TaskCreated, map[string]interface{}{
 		"boardId": column.BoardID,
 		"task":    task,
@@ -237,7 +237,7 @@ func handleGetTaskByID(id uint) common.RPCResponse {
 }
 
 func handleGetTasksByBoard(boardID uint) common.RPCResponse {
-	// Get all columns for this board
+	// ? Get all columns for this board
 	var columns []models.Column
 	common.DB.Where("board_id = ?", boardID).Find(&columns)
 
@@ -281,11 +281,11 @@ func handleUpdateTask(data map[string]interface{}) common.RPCResponse {
 		return common.RPCResponse{Success: false, Error: "Failed to update task", StatusCode: 500}
 	}
 
-	// Get column to find board ID
+	// ? Get column to find board ID
 	var column models.Column
 	common.DB.First(&column, task.ColumnID)
 
-	// Publish event
+	// ? Publish event
 	common.PublishEvent(common.TaskUpdated, map[string]interface{}{
 		"boardId": column.BoardID,
 		"task":    task,
@@ -303,14 +303,14 @@ func handleDeleteTask(id uint) common.RPCResponse {
 		return common.RPCResponse{Success: false, Error: "Task not found", StatusCode: 404}
 	}
 
-	// Get column to find board ID
+	// ? Get column to find board ID
 	var column models.Column
 	common.DB.First(&column, task.ColumnID)
 	boardID := column.BoardID
 
 	common.DB.Delete(&task)
 
-	// Publish event
+	// ? Publish event
 	common.PublishEvent(common.TaskDeleted, map[string]interface{}{
 		"boardId": boardID,
 		"taskId":  id,
@@ -328,7 +328,7 @@ func handleMoveTask(data map[string]interface{}) common.RPCResponse {
 		return common.RPCResponse{Success: false, Error: "Task not found", StatusCode: 404}
 	}
 
-	// Get old column for board ID
+	// ? Get old column for board ID
 	var oldColumn models.Column
 	common.DB.First(&oldColumn, task.ColumnID)
 	boardID := oldColumn.BoardID
@@ -338,7 +338,7 @@ func handleMoveTask(data map[string]interface{}) common.RPCResponse {
 		return common.RPCResponse{Success: false, Error: "Failed to move task", StatusCode: 500}
 	}
 
-	// Publish event
+	// ? Publish event
 	common.PublishEvent(common.TaskUpdated, map[string]interface{}{
 		"boardId": boardID,
 		"task":    task,

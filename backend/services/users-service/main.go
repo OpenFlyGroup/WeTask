@@ -21,7 +21,7 @@ func main() {
 	if err := common.InitPostgreSQL(); err != nil {
 		log.Fatal("Failed to initialize PostgreSQL:", err)
 	}
-	
+
 	// ? Migrate users models (user profile data)
 	if err := common.MigrateUsersModels(); err != nil {
 		log.Fatal("Failed to migrate database:", err)
@@ -35,6 +35,7 @@ func main() {
 
 	// ? Declare queues
 	queues := []string{
+		common.UsersCreate,
 		common.UsersGetByID,
 		common.UsersGetByEmail,
 		common.UsersUpdate,
@@ -78,36 +79,43 @@ func main() {
 }
 
 func handleMessages(queue string, msgs <-chan amqp.Delivery) {
-	for d := range msgs {
+	for message := range msgs {
 		var response common.RPCResponse
 
 		switch queue {
+		case common.UsersCreate:
+			var data map[string]any
+			if err := json.Unmarshal(message.Body, &data); err != nil {
+				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
+			} else {
+				response = handleCreate(data)
+			}
 		case common.UsersGetByID:
-			var data map[string]interface{}
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var data map[string]any
+			if err := json.Unmarshal(message.Body, &data); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
 				id, _ := data["id"].(float64)
 				response = handleGetByID(uint(id))
 			}
 		case common.UsersGetByEmail:
-			var data map[string]interface{}
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var data map[string]any
+			if err := json.Unmarshal(message.Body, &data); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
 				email, _ := data["email"].(string)
 				response = handleGetByEmail(email)
 			}
 		case common.UsersUpdate:
-			var data map[string]interface{}
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var data map[string]any
+			if err := json.Unmarshal(message.Body, &data); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
 				response = handleUpdate(data)
 			}
 		case common.UsersGetMe:
-			var data map[string]interface{}
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var data map[string]any
+			if err := json.Unmarshal(message.Body, &data); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
 				userID, _ := data["userId"].(float64)
@@ -117,18 +125,70 @@ func handleMessages(queue string, msgs <-chan amqp.Delivery) {
 
 		// ? Send response
 		responseBody, _ := json.Marshal(response)
-		d.Ack(false)
+		message.Ack(false)
 		common.RabbitMQChannel.Publish(
-			"",        // ? exchange
-			d.ReplyTo, // ? routing key
-			false,     // ? mandatory
-			false,     // ? immediate
+			"",              // ? exchange
+			message.ReplyTo, // ? routing key
+			false,           // ? mandatory
+			false,           // ? immediate
 			amqp.Publishing{
 				ContentType:   "application/json",
-				CorrelationId: d.CorrelationId,
+				CorrelationId: message.CorrelationId,
 				Body:          responseBody,
 			},
 		)
+	}
+}
+
+func handleCreate(data map[string]any) common.RPCResponse {
+	id, _ := data["id"].(float64)
+	email, _ := data["email"].(string)
+	name, _ := data["name"].(string)
+
+	if email == "" || name == "" {
+		return common.RPCResponse{Success: false, Error: "Missing required fields", StatusCode: 400}
+	}
+
+	var existingUser models.User
+	if err := common.DB.First(&existingUser, uint(id)).Error; err == nil {
+		if existingUser.Email != email {
+			existingUser.Email = email
+		}
+		if existingUser.Name != name {
+			existingUser.Name = name
+		}
+		common.DB.Save(&existingUser)
+		return common.RPCResponse{
+			Success: true,
+			Data: map[string]any{
+				"id":        existingUser.ID,
+				"email":     existingUser.Email,
+				"name":      existingUser.Name,
+				"createdAt": existingUser.CreatedAt,
+				"updatedAt": existingUser.UpdatedAt,
+			},
+		}
+	}
+
+	user := models.User{
+		ID:    uint(id),
+		Email: email,
+		Name:  name,
+	}
+
+	if err := common.DB.Create(&user).Error; err != nil {
+		return common.RPCResponse{Success: false, Error: "Failed to create user", StatusCode: 500}
+	}
+
+	return common.RPCResponse{
+		Success: true,
+		Data: map[string]any{
+			"id":        user.ID,
+			"email":     user.Email,
+			"name":      user.Name,
+			"createdAt": user.CreatedAt,
+			"updatedAt": user.UpdatedAt,
+		},
 	}
 }
 
@@ -140,7 +200,7 @@ func handleGetByID(id uint) common.RPCResponse {
 
 	return common.RPCResponse{
 		Success: true,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"id":        user.ID,
 			"email":     user.Email,
 			"name":      user.Name,
@@ -158,7 +218,7 @@ func handleGetByEmail(email string) common.RPCResponse {
 
 	return common.RPCResponse{
 		Success: true,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"id":        user.ID,
 			"email":     user.Email,
 			"name":      user.Name,
@@ -168,7 +228,7 @@ func handleGetByEmail(email string) common.RPCResponse {
 	}
 }
 
-func handleUpdate(data map[string]interface{}) common.RPCResponse {
+func handleUpdate(data map[string]any) common.RPCResponse {
 	id, ok := data["id"].(float64)
 	if !ok {
 		return common.RPCResponse{Success: false, Error: "User ID required", StatusCode: 400}
@@ -198,7 +258,7 @@ func handleUpdate(data map[string]interface{}) common.RPCResponse {
 
 	return common.RPCResponse{
 		Success: true,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"id":        user.ID,
 			"email":     user.Email,
 			"name":      user.Name,
@@ -216,7 +276,7 @@ func handleGetMe(userID uint) common.RPCResponse {
 
 	return common.RPCResponse{
 		Success: true,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"id":        user.ID,
 			"email":     user.Email,
 			"name":      user.Name,
@@ -225,4 +285,3 @@ func handleGetMe(userID uint) common.RPCResponse {
 		},
 	}
 }
-

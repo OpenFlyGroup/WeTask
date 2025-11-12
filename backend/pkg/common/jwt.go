@@ -9,18 +9,18 @@ import (
 
 var jwtSecret []byte
 
-// InitJWT initializes JWT secret
+// ? InitJWT initializes JWT secret
 func InitJWT(secret string) {
 	jwtSecret = []byte(secret)
 }
 
-// Claims represents JWT claims
+// ? Claims represents JWT claims
 type Claims struct {
 	UserID uint `json:"sub"`
 	jwt.RegisteredClaims
 }
 
-// GenerateToken generates a JWT token
+// ? GenerateToken generates a JWT token
 func GenerateToken(userID uint, expirationTime time.Duration) (string, error) {
 	expirationTimePoint := time.Now().Add(expirationTime)
 	claims := &Claims{
@@ -35,7 +35,7 @@ func GenerateToken(userID uint, expirationTime time.Duration) (string, error) {
 	return token.SignedString(jwtSecret)
 }
 
-// ValidateToken validates a JWT token
+// ? ValidateToken validates a JWT token
 func ValidateToken(tokenString string) (*Claims, error) {
 	if len(jwtSecret) == 0 {
 		return nil, errors.New("JWT secret not initialized")

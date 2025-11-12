@@ -17,35 +17,35 @@ import (
 )
 
 func main() {
-	// Load environment variables
+	// ? Load environment variables
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found")
 	}
 
-	// Initialize database
+	// ? Initialize database
 	if err := common.InitPostgreSQL(); err != nil {
 		log.Fatal("Failed to initialize PostgreSQL:", err)
 	}
-	
-	// Migrate auth models
+
+	// ? Migrate auth models
 	if err := common.MigrateAuthModels(); err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}
 
-	// Initialize RabbitMQ
+	// ? Initialize RabbitMQ
 	if err := common.InitRabbitMQ(); err != nil {
 		log.Fatal("Failed to initialize RabbitMQ:", err)
 	}
 	defer common.CloseRabbitMQ()
 
-	// Initialize JWT
+	// ? Initialize JWT
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		jwtSecret = "your-super-secret-jwt-key-change-in-production"
 	}
 	common.InitJWT(jwtSecret)
 
-	// Declare queues
+	// ? Declare queues
 	queues := []string{
 		common.AuthRegister,
 		common.AuthLogin,
@@ -55,28 +55,28 @@ func main() {
 
 	for _, queue := range queues {
 		_, err := common.RabbitMQChannel.QueueDeclare(
-			queue, // name
-			true,  // durable
-			false, // delete when unused
-			false, // exclusive
-			false, // no-wait
-			nil,   // arguments
+			queue, // * name
+			true,  // * durable
+			false, // * delete when unused
+			false, // * exclusive
+			false, // * no-wait
+			nil,   // * arguments
 		)
 		if err != nil {
 			log.Fatal("Failed to declare queue:", err)
 		}
 	}
 
-	// Start consuming messages
+	// ? Start consuming messages
 	for _, queue := range queues {
 		msgs, err := common.RabbitMQChannel.Consume(
-			queue, // queue
-			"",    // consumer
-			false, // auto-ack
-			false, // exclusive
-			false, // no-local
-			false, // no-wait
-			nil,   // args
+			queue, // * queue
+			"",    // * consumer
+			false, // * auto-ack
+			false, // * exclusive
+			false, // * no-local
+			false, // * no-wait
+			nil,   // * args
 		)
 		if err != nil {
 			log.Fatal("Failed to register consumer:", err)
@@ -86,7 +86,7 @@ func main() {
 	}
 
 	log.Println("Auth Service is running...")
-	select {} // Keep running
+	select {} // ? Keep running
 }
 
 func handleMessages(queue string, msgs <-chan amqp.Delivery) {
@@ -95,21 +95,21 @@ func handleMessages(queue string, msgs <-chan amqp.Delivery) {
 
 		switch queue {
 		case common.AuthRegister:
-			var data map[string]interface{}
+			var data map[string]any
 			if err := json.Unmarshal(d.Body, &data); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
 				response = handleRegister(data)
 			}
 		case common.AuthLogin:
-			var data map[string]interface{}
+			var data map[string]any
 			if err := json.Unmarshal(d.Body, &data); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
 				response = handleLogin(data)
 			}
 		case common.AuthRefresh:
-			var data map[string]interface{}
+			var data map[string]any
 			if err := json.Unmarshal(d.Body, &data); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
@@ -117,7 +117,7 @@ func handleMessages(queue string, msgs <-chan amqp.Delivery) {
 				response = handleRefresh(refreshToken)
 			}
 		case common.AuthValidate:
-			var data map[string]interface{}
+			var data map[string]any
 			if err := json.Unmarshal(d.Body, &data); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
@@ -126,14 +126,14 @@ func handleMessages(queue string, msgs <-chan amqp.Delivery) {
 			}
 		}
 
-		// Send response
+		// ? Send response
 		responseBody, _ := json.Marshal(response)
 		d.Ack(false)
 		common.RabbitMQChannel.Publish(
-			"",        // exchange
-			d.ReplyTo, // routing key
-			false,     // mandatory
-			false,     // immediate
+			"",        // * exchange
+			d.ReplyTo, // * routing key
+			false,     // * mandatory
+			false,     // * immediate
 			amqp.Publishing{
 				ContentType:   "application/json",
 				CorrelationId: d.CorrelationId,
@@ -143,7 +143,7 @@ func handleMessages(queue string, msgs <-chan amqp.Delivery) {
 	}
 }
 
-func handleRegister(data map[string]interface{}) common.RPCResponse {
+func handleRegister(data map[string]any) common.RPCResponse {
 	email, _ := data["email"].(string)
 	password, _ := data["password"].(string)
 	name, _ := data["name"].(string)
@@ -152,19 +152,19 @@ func handleRegister(data map[string]interface{}) common.RPCResponse {
 		return common.RPCResponse{Success: false, Error: "Missing required fields", StatusCode: 400}
 	}
 
-	// Check if user exists
+	// ? Check if user exists
 	var existingUser models.User
 	if err := common.DB.Where("email = ?", email).First(&existingUser).Error; err == nil {
 		return common.RPCResponse{Success: false, Error: "User already exists", StatusCode: 409}
 	}
 
-	// Hash password
+	// ? Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return common.RPCResponse{Success: false, Error: "Failed to hash password", StatusCode: 500}
 	}
 
-	// Create user
+	// ? Create user
 	user := models.User{
 		Email:    email,
 		Password: string(hashedPassword),
@@ -175,7 +175,18 @@ func handleRegister(data map[string]interface{}) common.RPCResponse {
 		return common.RPCResponse{Success: false, Error: "Failed to create user", StatusCode: 500}
 	}
 
-	// Generate tokens
+	// ? Also create user in users service (sync)
+	_, syncErr := common.CallRPC(common.UsersCreate, map[string]any{
+		"id":    user.ID,
+		"email": user.Email,
+		"name":  user.Name,
+	})
+	if syncErr != nil {
+		// ? Log error but don't fail registration
+		log.Printf("Warning: Failed to sync user to users service: %v", syncErr)
+	}
+
+	// ? Generate tokens
 	tokens, err := generateTokens(user.ID)
 	if err != nil {
 		return common.RPCResponse{Success: false, Error: "Failed to generate tokens", StatusCode: 500}
@@ -183,8 +194,8 @@ func handleRegister(data map[string]interface{}) common.RPCResponse {
 
 	return common.RPCResponse{
 		Success: true,
-		Data: map[string]interface{}{
-			"user": map[string]interface{}{
+		Data: map[string]any{
+			"user": map[string]any{
 				"id":        user.ID,
 				"email":     user.Email,
 				"name":      user.Name,
@@ -196,7 +207,7 @@ func handleRegister(data map[string]interface{}) common.RPCResponse {
 	}
 }
 
-func handleLogin(data map[string]interface{}) common.RPCResponse {
+func handleLogin(data map[string]any) common.RPCResponse {
 	email, _ := data["email"].(string)
 	password, _ := data["password"].(string)
 
@@ -204,18 +215,29 @@ func handleLogin(data map[string]interface{}) common.RPCResponse {
 		return common.RPCResponse{Success: false, Error: "Missing email or password", StatusCode: 400}
 	}
 
-	// Find user
+	// ? Find user
 	var user models.User
 	if err := common.DB.Where("email = ?", email).First(&user).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Invalid credentials", StatusCode: 401}
 	}
 
-	// Verify password
+	// ? Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		return common.RPCResponse{Success: false, Error: "Invalid credentials", StatusCode: 401}
 	}
 
-	// Generate tokens
+	// ? Ensure user exists in users service (sync if missing)
+	_, syncErr := common.CallRPC(common.UsersCreate, map[string]any{
+		"id":    user.ID,
+		"email": user.Email,
+		"name":  user.Name,
+	})
+	if syncErr != nil {
+		// ? Log error but don't fail login
+		log.Printf("Warning: Failed to sync user to users service: %v", syncErr)
+	}
+
+	// ? Generate tokens
 	tokens, err := generateTokens(user.ID)
 	if err != nil {
 		return common.RPCResponse{Success: false, Error: "Failed to generate tokens", StatusCode: 500}
@@ -223,8 +245,8 @@ func handleLogin(data map[string]interface{}) common.RPCResponse {
 
 	return common.RPCResponse{
 		Success: true,
-		Data: map[string]interface{}{
-			"user": map[string]interface{}{
+		Data: map[string]any{
+			"user": map[string]any{
 				"id":        user.ID,
 				"email":     user.Email,
 				"name":      user.Name,
@@ -241,24 +263,24 @@ func handleRefresh(refreshToken string) common.RPCResponse {
 		return common.RPCResponse{Success: false, Error: "Refresh token required", StatusCode: 400}
 	}
 
-	// Find refresh token
+	// ? Find refresh token
 	var token models.RefreshToken
 	if err := common.DB.Where("token = ? AND expires_at > ?", refreshToken, time.Now()).First(&token).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Invalid refresh token", StatusCode: 401}
 	}
 
-	// Generate new tokens
+	// ? Generate new tokens
 	tokens, err := generateTokens(token.UserID)
 	if err != nil {
 		return common.RPCResponse{Success: false, Error: "Failed to generate tokens", StatusCode: 500}
 	}
 
-	// Delete old refresh token
+	// ? Delete old refresh token
 	common.DB.Delete(&token)
 
 	return common.RPCResponse{
 		Success: true,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"accessToken":  tokens["accessToken"],
 			"refreshToken": tokens["refreshToken"],
 		},
@@ -275,7 +297,7 @@ func handleValidate(token string) common.RPCResponse {
 		return common.RPCResponse{Success: false, Error: "Invalid token", StatusCode: 401}
 	}
 
-	// Find user
+	// ? Find user
 	var user models.User
 	if err := common.DB.First(&user, claims.UserID).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "User not found", StatusCode: 401}
@@ -283,7 +305,7 @@ func handleValidate(token string) common.RPCResponse {
 
 	return common.RPCResponse{
 		Success: true,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"id":    user.ID,
 			"email": user.Email,
 			"name":  user.Name,
@@ -297,7 +319,7 @@ func generateTokens(userID uint) (map[string]string, error) {
 		return nil, err
 	}
 
-	// Generate refresh token
+	// ? Generate refresh token
 	refreshTokenBytes := make([]byte, 64)
 	_, err = rand.Read(refreshTokenBytes)
 	if err != nil {
@@ -305,7 +327,7 @@ func generateTokens(userID uint) (map[string]string, error) {
 	}
 	refreshToken := fmt.Sprintf("%x", refreshTokenBytes)
 
-	// Save refresh token
+	// ? Save refresh token
 	expiresAt := time.Now().Add(7 * 24 * time.Hour)
 	rt := models.RefreshToken{
 		Token:     refreshToken,
@@ -319,4 +341,3 @@ func generateTokens(userID uint) (map[string]string, error) {
 		"refreshToken": refreshToken,
 	}, nil
 }
-

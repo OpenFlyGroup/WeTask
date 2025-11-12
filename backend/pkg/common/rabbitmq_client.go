@@ -13,7 +13,7 @@ import (
 var RabbitMQConn *amqp.Connection
 var RabbitMQChannel *amqp.Channel
 
-// InitRabbitMQ initializes RabbitMQ connection
+// ? InitRabbitMQ initializes RabbitMQ connection
 func InitRabbitMQ() error {
 	url := os.Getenv("RABBITMQ_URL")
 	if url == "" {
@@ -41,7 +41,7 @@ func InitRabbitMQ() error {
 	return nil
 }
 
-// CloseRabbitMQ closes RabbitMQ connection
+// ? CloseRabbitMQ closes RabbitMQ connection
 func CloseRabbitMQ() {
 	if RabbitMQChannel != nil {
 		RabbitMQChannel.Close()
@@ -51,52 +51,52 @@ func CloseRabbitMQ() {
 	}
 }
 
-// CallRPC makes an RPC call to a service
+// ? CallRPC makes an RPC call to a service
 func CallRPC(pattern string, payload interface{}) (*RPCResponse, error) {
 	if RabbitMQChannel == nil {
 		return nil, fmt.Errorf("RabbitMQ channel not initialized")
 	}
 
-	// Declare queue for response
+	// ? Declare queue for response
 	replyQueue, err := RabbitMQChannel.QueueDeclare(
-		"",    // name
-		false, // durable
-		true,  // delete when unused
-		true,  // exclusive
-		false, // no-wait
-		nil,   // arguments
+		"",    // * name
+		false, // * durable
+		true,  // * delete when unused
+		true,  // * exclusive
+		false, // * no-wait
+		nil,   // * arguments
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to declare reply queue: %w", err)
 	}
 
-	// Consume response
+	// ? Consume response
 	msgs, err := RabbitMQChannel.Consume(
-		replyQueue.Name, // queue
-		"",              // consumer
-		true,             // auto-ack
-		false,            // exclusive
-		false,            // no-local
-		false,            // no-wait
-		nil,              // args
+		replyQueue.Name, // * queue
+		"",              // * consumer
+		true,            // * auto-ack
+		false,           // * exclusive
+		false,           // * no-local
+		false,           // * no-wait
+		nil,             // * args
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to register consumer: %w", err)
 	}
 
-	// Serialize payload
+	// ? Serialize payload
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
-	// Publish request
+	// ? Publish request
 	corrID := fmt.Sprintf("%d", time.Now().UnixNano())
 	err = RabbitMQChannel.Publish(
-		"",      // exchange
-		pattern, // routing key
-		false,   // mandatory
-		false,   // immediate
+		"",      // * exchange
+		pattern, // * routing key
+		false,   // * mandatory
+		false,   // * immediate
 		amqp.Publishing{
 			ContentType:   "application/json",
 			CorrelationId: corrID,
@@ -108,7 +108,7 @@ func CallRPC(pattern string, payload interface{}) (*RPCResponse, error) {
 		return nil, fmt.Errorf("failed to publish message: %w", err)
 	}
 
-	// Wait for response with timeout
+	// ? Wait for response with timeout
 	timeout := time.After(5 * time.Second)
 	for {
 		select {
@@ -126,7 +126,7 @@ func CallRPC(pattern string, payload interface{}) (*RPCResponse, error) {
 	}
 }
 
-// PublishEvent publishes an event to RabbitMQ
+// ? PublishEvent publishes an event to RabbitMQ
 func PublishEvent(event string, data interface{}) error {
 	if RabbitMQChannel == nil {
 		return fmt.Errorf("RabbitMQ channel not initialized")
@@ -138,10 +138,10 @@ func PublishEvent(event string, data interface{}) error {
 	}
 
 	err = RabbitMQChannel.Publish(
-		"events", // exchange
-		event,    // routing key
-		false,    // mandatory
-		false,    // immediate
+		"events", // * exchange
+		event,    // * routing key
+		false,    // * mandatory
+		false,    // * immediate
 		amqp.Publishing{
 			ContentType: "application/json",
 			Body:        body,
@@ -149,4 +149,3 @@ func PublishEvent(event string, data interface{}) error {
 	)
 	return err
 }
-

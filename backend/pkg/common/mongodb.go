@@ -13,7 +13,7 @@ import (
 
 var MongoDB *mongo.Database
 
-// InitMongoDB initializes MongoDB connection
+// ? InitMongoDB initializes MongoDB connection
 func InitMongoDB() error {
 	uri := os.Getenv("MONGODB_URI")
 	if uri == "" {
@@ -33,7 +33,7 @@ func InitMongoDB() error {
 		return fmt.Errorf("failed to connect to MongoDB: %w", err)
 	}
 
-	// Test connection
+	// ? Test connection
 	err = client.Ping(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to ping MongoDB: %w", err)

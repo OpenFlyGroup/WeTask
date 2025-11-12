@@ -12,28 +12,28 @@ import (
 )
 
 func main() {
-	// Load environment variables
+	// ? Load environment variables
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found")
 	}
 
-	// Initialize database
+	// ? Initialize database
 	if err := common.InitPostgreSQL(); err != nil {
 		log.Fatal("Failed to initialize PostgreSQL:", err)
 	}
 	
-	// Migrate teams models
+	// ? Migrate teams models
 	if err := common.MigrateTeamsModels(); err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}
 
-	// Initialize RabbitMQ
+	// ? Initialize RabbitMQ
 	if err := common.InitRabbitMQ(); err != nil {
 		log.Fatal("Failed to initialize RabbitMQ:", err)
 	}
 	defer common.CloseRabbitMQ()
 
-	// Declare queues
+	// ? Declare queues
 	queues := []string{
 		common.TeamsCreate,
 		common.TeamsGetAll,
@@ -45,28 +45,28 @@ func main() {
 
 	for _, queue := range queues {
 		_, err := common.RabbitMQChannel.QueueDeclare(
-			queue, // name
-			true,  // durable
-			false, // delete when unused
-			false, // exclusive
-			false, // no-wait
-			nil,   // arguments
+			queue, // * name
+			true,  // * durable
+			false, // * delete when unused
+			false, // * exclusive
+			false, // * no-wait
+			nil,   // * arguments
 		)
 		if err != nil {
 			log.Fatal("Failed to declare queue:", err)
 		}
 	}
 
-	// Start consuming messages
+	// ? Start consuming messages
 	for _, queue := range queues {
 		msgs, err := common.RabbitMQChannel.Consume(
-			queue, // queue
-			"",    // consumer
-			false, // auto-ack
-			false, // exclusive
-			false, // no-local
-			false, // no-wait
-			nil,   // args
+			queue, // * queue
+			"",    // * consumer
+			false, // * auto-ack
+			false, // * exclusive
+			false, // * no-local
+			false, // * no-wait
+			nil,   // * args
 		)
 		if err != nil {
 			log.Fatal("Failed to register consumer:", err)
@@ -76,7 +76,7 @@ func main() {
 	}
 
 	log.Println("Teams Service is running...")
-	select {} // Keep running
+	select {} // ? Keep running
 }
 
 func handleMessages(queue string, msgs <-chan amqp.Delivery) {
@@ -125,14 +125,14 @@ func handleMessages(queue string, msgs <-chan amqp.Delivery) {
 			}
 		}
 
-		// Send response
+		// ? Send response
 		responseBody, _ := json.Marshal(response)
 		d.Ack(false)
 		common.RabbitMQChannel.Publish(
-			"",        // exchange
-			d.ReplyTo, // routing key
-			false,     // mandatory
-			false,     // immediate
+			"",        // * exchange
+			d.ReplyTo, // * routing key
+			false,     // * mandatory
+			false,     // * immediate
 			amqp.Publishing{
 				ContentType:   "application/json",
 				CorrelationId: d.CorrelationId,
@@ -155,7 +155,7 @@ func handleCreate(data map[string]interface{}) common.RPCResponse {
 		return common.RPCResponse{Success: false, Error: "Failed to create team", StatusCode: 500}
 	}
 
-	// Add creator as owner
+	// ? Add creator as owner
 	member := models.TeamMember{
 		TeamID: team.ID,
 		UserID: uint(userID),
@@ -163,7 +163,7 @@ func handleCreate(data map[string]interface{}) common.RPCResponse {
 	}
 	common.DB.Create(&member)
 
-	// Load members
+	// ? Load members
 	common.DB.Preload("Members.User").First(&team, team.ID)
 
 	return common.RPCResponse{
@@ -202,7 +202,7 @@ func handleAddMember(data map[string]interface{}) common.RPCResponse {
 		role = "member"
 	}
 
-	// Check if member already exists
+	// ? Check if member already exists
 	var existing models.TeamMember
 	if err := common.DB.Where("team_id = ? AND user_id = ?", uint(teamID), uint(userID)).First(&existing).Error; err == nil {
 		return common.RPCResponse{Success: false, Error: "Member already exists", StatusCode: 409}
@@ -219,7 +219,7 @@ func handleAddMember(data map[string]interface{}) common.RPCResponse {
 
 	common.DB.Preload("User").First(&member, member.ID)
 
-	// Publish event
+	// ? Publish event
 	common.PublishEvent(common.TeamMemberAdded, map[string]interface{}{
 		"teamId": teamID,
 		"member": member,
@@ -242,7 +242,7 @@ func handleRemoveMember(data map[string]interface{}) common.RPCResponse {
 
 	common.DB.Delete(&member)
 
-	// Publish event
+	// ? Publish event
 	common.PublishEvent(common.TeamMemberRemoved, map[string]interface{}{
 		"teamId": teamID,
 		"userId": userID,
@@ -256,12 +256,12 @@ func handleGetUserTeams(userID uint) common.RPCResponse {
 	common.DB.Where("user_id = ?", userID).Preload("Team").Preload("User").Find(&members)
 
 	teams := make([]map[string]interface{}, len(members))
-	for i, m := range members {
+	for i, member := range members {
 		teams[i] = map[string]interface{}{
-			"id":        m.Team.ID,
-			"name":      m.Team.Name,
-			"role":      m.Role,
-			"createdAt": m.Team.CreatedAt,
+			"id":        member.Team.ID,
+			"name":      member.Team.Name,
+			"role":      member.Role,
+			"createdAt": member.Team.CreatedAt,
 		}
 	}
 

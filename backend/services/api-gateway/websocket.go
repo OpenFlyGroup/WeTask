@@ -39,12 +39,12 @@ func (h *Hub) Run() {
 	// Subscribe to RabbitMQ events
 	msgs, err := common.RabbitMQChannel.Consume(
 		"events_queue", // queue
-		"",              // consumer
-		true,            // auto-ack
-		false,           // exclusive
-		false,           // no-local
-		false,           // no-wait
-		nil,             // args
+		"",             // consumer
+		true,           // auto-ack
+		false,          // exclusive
+		false,          // no-local
+		false,          // no-wait
+		nil,            // args
 	)
 	if err != nil {
 		log.Println("Failed to consume events:", err)
@@ -133,7 +133,7 @@ func handleWebSocket(c *gin.Context, hub *Hub) {
 	}
 
 	client := &Client{
-		hub:   hub,
+		hub:    hub,
 		conn:   conn,
 		send:   make(chan []byte, 256),
 		rooms:  make(map[string]bool),
@@ -189,19 +189,13 @@ func (c *Client) readPump() {
 }
 
 func (c *Client) writePump() {
-	for {
-		select {
-		case message, ok := <-c.send:
-			if !ok {
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-				return
-			}
-
-			if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
-				log.Printf("WebSocket write error: %v", err)
-				return
-			}
+	for message := range c.send {
+		if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
+			log.Printf("WebSocket write error: %v", err)
+			_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+			return
 		}
 	}
-}
 
+	_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+}

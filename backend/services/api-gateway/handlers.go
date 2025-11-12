@@ -6,23 +6,22 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-
 	"github.com/wetask/backend/pkg/common"
 )
 
 func authMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
+	return func(ctx *gin.Context) {
+		authHeader := ctx.GetHeader("Authorization")
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
-			c.Abort()
+			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
+			ctx.Abort()
 			return
 		}
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization header"})
-			c.Abort()
+			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization header"})
+			ctx.Abort()
 			return
 		}
 
@@ -32,39 +31,39 @@ func authMiddleware() gin.HandlerFunc {
 		})
 
 		if err != nil || !response.Success {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-			c.Abort()
+			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+			ctx.Abort()
 			return
 		}
 
 		userData, ok := response.Data.(map[string]interface{})
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token data"})
-			c.Abort()
+			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token data"})
+			ctx.Abort()
 			return
 		}
 
 		userID, ok := userData["id"].(float64)
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user ID"})
-			c.Abort()
+			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user ID"})
+			ctx.Abort()
 			return
 		}
 
-		c.Set("userId", uint(userID))
-		c.Next()
+		ctx.Set("userId", uint(userID))
+		ctx.Next()
 	}
 }
 
-func handleRegister(c *gin.Context) {
+func handleRegister(ctx *gin.Context) {
 	var req struct {
 		Email    string `json:"email" binding:"required,email"`
 		Password string `json:"password" binding:"required,min=6"`
 		Name     string `json:"name" binding:"required"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -75,26 +74,26 @@ func handleRegister(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
 
-func handleLogin(c *gin.Context) {
+func handleLogin(ctx *gin.Context) {
 	var req struct {
 		Email    string `json:"email" binding:"required,email"`
 		Password string `json:"password" binding:"required"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -104,25 +103,25 @@ func handleLogin(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
 
-func handleRefresh(c *gin.Context) {
+func handleRefresh(ctx *gin.Context) {
 	var req struct {
 		RefreshToken string `json:"refreshToken" binding:"required"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -131,20 +130,20 @@ func handleRefresh(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
 
-func handleGetMe(c *gin.Context) {
-	userIDVal, _ := c.Get("userId")
+func handleGetMe(ctx *gin.Context) {
+	userIDVal, _ := ctx.Get("userId")
 	userID := userIDVal.(uint)
 
 	response, err := common.CallRPC(common.UsersGetMe, map[string]interface{}{
@@ -152,22 +151,22 @@ func handleGetMe(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
 
-func handleGetUser(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+func handleGetUser(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
@@ -176,22 +175,22 @@ func handleGetUser(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
 
-func handleUpdateUser(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+func handleUpdateUser(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
@@ -200,8 +199,8 @@ func handleUpdateUser(c *gin.Context) {
 		Email string `json:"email"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -215,43 +214,43 @@ func handleUpdateUser(c *gin.Context) {
 
 	response, err := common.CallRPC(common.UsersUpdate, data)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
 
-func handleGetTeams(c *gin.Context) {
+func handleGetTeams(ctx *gin.Context) {
 	response, err := common.CallRPC(common.TeamsGetAll, nil)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
 
-func handleCreateTeam(c *gin.Context) {
-	userIDVal, _ := c.Get("userId")
+func handleCreateTeam(ctx *gin.Context) {
+	userIDVal, _ := ctx.Get("userId")
 	userID := userIDVal.(uint)
 
 	var req struct {
 		Name string `json:"name" binding:"required"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -261,22 +260,22 @@ func handleCreateTeam(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
 
-func handleGetTeam(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+func handleGetTeam(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid team ID"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid team ID"})
 		return
 	}
 
@@ -285,22 +284,22 @@ func handleGetTeam(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
 
-func handleAddTeamMember(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+func handleAddTeamMember(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid team ID"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid team ID"})
 		return
 	}
 
@@ -309,8 +308,8 @@ func handleAddTeamMember(c *gin.Context) {
 		Role   string `json:"role"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -321,28 +320,28 @@ func handleAddTeamMember(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
 
-func handleRemoveTeamMember(c *gin.Context) {
-	teamID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+func handleRemoveTeamMember(ctx *gin.Context) {
+	teamID, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid team ID"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid team ID"})
 		return
 	}
 
-	userID, err := strconv.ParseUint(c.Param("userId"), 10, 32)
+	userID, err := strconv.ParseUint(ctx.Param("userId"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
@@ -352,20 +351,20 @@ func handleRemoveTeamMember(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	ctx.JSON(http.StatusOK, gin.H{"success": true})
 }
 
-func handleGetBoards(c *gin.Context) {
-	userIDVal, _ := c.Get("userId")
+func handleGetBoards(ctx *gin.Context) {
+	userIDVal, _ := ctx.Get("userId")
 	userID := userIDVal.(uint)
 
 	response, err := common.CallRPC(common.BoardsGetAll, map[string]interface{}{
@@ -373,26 +372,26 @@ func handleGetBoards(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
 
-func handleCreateBoard(c *gin.Context) {
+func handleCreateBoard(ctx *gin.Context) {
 	var req struct {
 		Title  string `json:"title" binding:"required"`
 		TeamID uint   `json:"teamId" binding:"required"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -402,22 +401,22 @@ func handleCreateBoard(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
 
-func handleGetBoard(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+func handleGetBoard(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid board ID"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid board ID"})
 		return
 	}
 
@@ -426,22 +425,22 @@ func handleGetBoard(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
 
-func handleUpdateBoard(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+func handleUpdateBoard(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid board ID"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid board ID"})
 		return
 	}
 
@@ -449,8 +448,8 @@ func handleUpdateBoard(c *gin.Context) {
 		Title string `json:"title"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -460,22 +459,22 @@ func handleUpdateBoard(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
 
-func handleDeleteBoard(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+func handleDeleteBoard(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid board ID"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid board ID"})
 		return
 	}
 
@@ -484,27 +483,27 @@ func handleDeleteBoard(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	ctx.JSON(http.StatusOK, gin.H{"success": true})
 }
 
-func handleCreateColumn(c *gin.Context) {
+func handleCreateColumn(ctx *gin.Context) {
 	var req struct {
 		Title   string `json:"title" binding:"required"`
 		BoardID uint   `json:"boardId" binding:"required"`
 		Order   int    `json:"order"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -515,22 +514,22 @@ func handleCreateColumn(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
 
-func handleGetColumns(c *gin.Context) {
-	boardID, err := strconv.ParseUint(c.Param("boardId"), 10, 32)
+func handleGetColumns(ctx *gin.Context) {
+	boardID, err := strconv.ParseUint(ctx.Param("boardId"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid board ID"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid board ID"})
 		return
 	}
 
@@ -539,22 +538,22 @@ func handleGetColumns(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
 
-func handleUpdateColumn(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+func handleUpdateColumn(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid column ID"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid column ID"})
 		return
 	}
 
@@ -563,8 +562,8 @@ func handleUpdateColumn(c *gin.Context) {
 		Order int    `json:"order"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -578,22 +577,22 @@ func handleUpdateColumn(c *gin.Context) {
 
 	response, err := common.CallRPC(common.ColumnsUpdate, data)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
 
-func handleDeleteColumn(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+func handleDeleteColumn(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid column ID"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid column ID"})
 		return
 	}
 
@@ -602,19 +601,19 @@ func handleDeleteColumn(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	ctx.JSON(http.StatusOK, gin.H{"success": true})
 }
 
-func handleCreateTask(c *gin.Context) {
+func handleCreateTask(ctx *gin.Context) {
 	var req struct {
 		Title       string `json:"title" binding:"required"`
 		Description string `json:"description"`
@@ -623,8 +622,8 @@ func handleCreateTask(c *gin.Context) {
 		Priority    string `json:"priority"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -644,22 +643,22 @@ func handleCreateTask(c *gin.Context) {
 
 	response, err := common.CallRPC(common.TasksCreate, data)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
 
-func handleGetTask(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+func handleGetTask(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
 		return
 	}
 
@@ -668,22 +667,22 @@ func handleGetTask(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
 
-func handleGetTasksByBoard(c *gin.Context) {
-	boardID, err := strconv.ParseUint(c.Param("boardId"), 10, 32)
+func handleGetTasksByBoard(ctx *gin.Context) {
+	boardID, err := strconv.ParseUint(ctx.Param("boardId"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid board ID"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid board ID"})
 		return
 	}
 
@@ -692,22 +691,22 @@ func handleGetTasksByBoard(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
 
-func handleUpdateTask(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+func handleUpdateTask(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
 		return
 	}
 
@@ -718,8 +717,8 @@ func handleUpdateTask(c *gin.Context) {
 		AssignedTo  *uint  `json:"assignedTo"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -739,22 +738,22 @@ func handleUpdateTask(c *gin.Context) {
 
 	response, err := common.CallRPC(common.TasksUpdate, data)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
 
-func handleDeleteTask(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+func handleDeleteTask(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
 		return
 	}
 
@@ -763,22 +762,22 @@ func handleDeleteTask(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	ctx.JSON(http.StatusOK, gin.H{"success": true})
 }
 
-func handleMoveTask(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+func handleMoveTask(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
 		return
 	}
 
@@ -786,8 +785,8 @@ func handleMoveTask(c *gin.Context) {
 		ColumnID uint `json:"columnId" binding:"required"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -797,34 +796,34 @@ func handleMoveTask(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
 
-func handleAddComment(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+func handleAddComment(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
 		return
 	}
 
-	userIDVal, _ := c.Get("userId")
+	userIDVal, _ := ctx.Get("userId")
 	userID := userIDVal.(uint)
 
 	var req struct {
 		Message string `json:"message" binding:"required"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -835,22 +834,22 @@ func handleAddComment(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
 
-func handleGetComments(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+func handleGetComments(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
 		return
 	}
 
@@ -859,14 +858,14 @@ func handleGetComments(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if !response.Success {
-		c.JSON(response.StatusCode, gin.H{"error": response.Error})
+		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Data)
+	ctx.JSON(http.StatusOK, response.Data)
 }
