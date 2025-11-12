@@ -9,9 +9,32 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 
 	"github.com/wetask/backend/pkg/common"
+	_ "github.com/wetask/backend/services/api-gateway/docs"
 )
+
+// @title           WeTask API Gateway
+// @version         1.0
+// @description     API Gateway for WeTask - A collaborative task management system
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   API Support
+// @contact.url    http://www.swagger.io/support
+// @contact.email  support@wetask.io
+
+// @license.name  Apache 2.0
+// @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host      localhost:3000
+// @BasePath  /api
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(router *http.Request) bool {
@@ -172,6 +195,9 @@ func main() {
 		handleWebSocket(c, hub)
 	})
 
+	// ? Swagger documentation
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "3000"
@@ -179,5 +205,6 @@ func main() {
 
 	log.Printf("API Gateway is running on http: // * localhost:%s/api", port)
 	log.Printf("WebSocket is available on ws: // * localhost:%s/ws", port)
+	log.Printf("Swagger documentation is available on http: // * localhost:%s/swagger/index.html", port)
 	router.Run(":" + port)
 }
