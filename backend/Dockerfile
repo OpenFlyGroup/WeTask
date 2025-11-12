@@ -1,55 +1,30 @@
-FROM node:20-alpine AS base
+# ? Build stage
+FROM golang:1.21-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies
-RUN apk add --no-cache bash coreutils
+# ? Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
 
-# Copy package files
-COPY package*.json ./
-COPY pnpm-lock.yaml* ./
-
-# Install pnpm globally
-RUN npm install -g pnpm
-
-# Install dependencies
-RUN pnpm install --no-frozen-lockfile
-
-# Copy entrypoint script first
-COPY docker-entrypoint.sh /app/
-RUN chmod +x /app/docker-entrypoint.sh
-
-# Copy all files (excluding node_modules via .dockerignore)
+# ? Copy source code
 COPY . .
 
-# Build all services
-FROM base AS api-gateway
-WORKDIR /app
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["npm", "run", "start:dev:gateway"]
+# ? Build argument for service name
+ARG SERVICE=api-gateway
 
-FROM base AS auth-service
-WORKDIR /app
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["npm", "run", "start:dev:auth"]
+# ? Build the specified service
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/bin/${SERVICE} ./services/${SERVICE}
 
-FROM base AS users-service
-WORKDIR /app
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["npm", "run", "start:dev:users"]
+# ? Runtime stage
+FROM alpine:latest
 
-FROM base AS teams-service
-WORKDIR /app
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["npm", "run", "start:dev:teams"]
+RUN apk --no-cache add ca-certificates
 
-FROM base AS boards-service
 WORKDIR /app
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["npm", "run", "start:dev:boards"]
 
-FROM base AS tasks-service
-WORKDIR /app
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["npm", "run", "start:dev:tasks"]
+# ? Copy the built binary
+ARG SERVICE=api-gateway
+COPY --from=builder /app/bin/${SERVICE} ./app
 
+CMD ["./app"]

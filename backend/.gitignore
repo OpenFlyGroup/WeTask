@@ -1,38 +1,38 @@
-# Dependencies
-node_modules/
-.pnp
-.pnp.js
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
 
-# Testing
-coverage/
+# Test binary
+*.test
 
-# Production
-dist/
-build/
+# Output of the go coverage tool
+*.out
 
-# Misc
-.DS_Store
-*.pem
+# Dependency directories
+vendor/
 
-# Debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
+# Go workspace file
+go.work
 
-# Local env files
+# Environment variables
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
 
 # IDE
-.vscode/
 .idea/
+.vscode/
 *.swp
 *.swo
 *~
 
-# Prisma
-prisma/migrations/
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
