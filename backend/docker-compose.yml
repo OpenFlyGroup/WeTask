@@ -1,43 +1,7 @@
 services:
-  postgres:
-    image: postgres:18-alpine
-    container_name: kanban_postgres
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-kanban}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kanban123}
-      POSTGRES_DB: ${POSTGRES_DB:-kanban}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - kanban_network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kanban"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  mongodb:
-    image: mongo:8
-    container_name: kanban_mongodb
-    environment:
-      MONGO_INITDB_DATABASE: ${MONGO_DB:-kanban}
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
-    networks:
-      - kanban_network
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   rabbitmq:
     image: rabbitmq:4.2-management-alpine
-    container_name: kanban_rabbitmq
+    container_name: rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-admin123}
@@ -47,9 +11,102 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
-      - kanban_network
+      - network
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-auth:
+    image: postgres:18-alpine
+    container_name: postgres_auth
+    environment:
+      POSTGRES_USER: ${AUTH_DB_USER:-auth_user}
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:-auth_pass123}
+      POSTGRES_DB: ${AUTH_DB_NAME:-auth_db}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_auth_data:/var/lib/postgresql/data
+    networks:
+      - network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auth_user -d auth_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-teams:
+    image: postgres:18-alpine
+    container_name: postgres_teams
+    environment:
+      POSTGRES_USER: ${TEAMS_DB_USER:-teams_user}
+      POSTGRES_PASSWORD: ${TEAMS_DB_PASSWORD:-teams_pass123}
+      POSTGRES_DB: ${TEAMS_DB_NAME:-teams_db}
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_teams_data:/var/lib/postgresql/data
+    networks:
+      - network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U teams_user -d teams_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-boards:
+    image: postgres:18-alpine
+    container_name: postgres_boards
+    environment:
+      POSTGRES_USER: ${BOARDS_DB_USER:-boards_user}
+      POSTGRES_PASSWORD: ${BOARDS_DB_PASSWORD:-boards_pass123}
+      POSTGRES_DB: ${BOARDS_DB_NAME:-boards_db}
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_boards_data:/var/lib/postgresql/data
+    networks:
+      - network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U boards_user -d boards_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-tasks:
+    image: postgres:18-alpine
+    container_name: postgres_tasks
+    environment:
+      POSTGRES_USER: ${TASKS_DB_USER:-tasks_user}
+      POSTGRES_PASSWORD: ${TASKS_DB_PASSWORD:-tasks_pass123}
+      POSTGRES_DB: ${TASKS_DB_NAME:-tasks_db}
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_tasks_data:/var/lib/postgresql/data
+    networks:
+      - network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tasks_user -d tasks_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongodb-tasks:
+    image: mongo:8
+    container_name: mongodb_tasks
+    environment:
+      MONGO_INITDB_DATABASE: ${TASKS_MONGO_DB:-tasks_mongo}
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongodb_tasks_data:/data/db
+    networks:
+      - network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -58,157 +115,207 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: api-gateway
-    container_name: kanban_api_gateway
+      args:
+        SERVICE: api-gateway
+    container_name: api_gateway
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=development
-      - DATABASE_URL=postgresql://kanban:kanban123@postgres:5432/kanban
-      - MONGODB_URI=mongodb://mongodb:27017/kanban
       - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
+      - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
+      - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
+      - RABBITMQ_USER=${RABBITMQ_USER:-admin}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-admin123}
       - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
       - PORT=3000
     depends_on:
-      postgres:
-        condition: service_healthy
-      mongodb:
-        condition: service_healthy
       rabbitmq:
         condition: service_healthy
     networks:
-      - kanban_network
-    volumes:
-      - ./apps/api-gateway:/app/apps/api-gateway
-      - ./libs:/app/libs
-    command: npm run start:dev:gateway
+      - network
+    command: ["./app"]
     restart: unless-stopped
 
   auth-service:
     build:
       context: .
       dockerfile: Dockerfile
-      target: auth-service
-    container_name: kanban_auth_service
+      args:
+        SERVICE: auth-service
+    container_name: auth_service
     environment:
-      - NODE_ENV=development
-      - DATABASE_URL=postgresql://kanban:kanban123@postgres:5432/kanban
+      - DATABASE_URL=postgresql://auth_user:auth_pass123@postgres-auth:5432/auth_db
+      - DB_HOST=${AUTH_DB_HOST:-postgres-auth}
+      - DB_PORT=${AUTH_DB_PORT:-5432}
+      - DB_USER=${AUTH_DB_USER:-auth_user}
+      - DB_PASSWORD=${AUTH_DB_PASSWORD:-auth_pass123}
+      - DB_NAME=${AUTH_DB_NAME:-auth_db}
       - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
+      - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
+      - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
+      - RABBITMQ_USER=${RABBITMQ_USER:-admin}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-admin123}
       - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
     depends_on:
-      postgres:
+      postgres-auth:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
     networks:
-      - kanban_network
-    volumes:
-      - ./apps/auth-service:/app/apps/auth-service
-      - ./libs:/app/libs
-    command: npm run start:dev:auth
+      - network
+    command: ["./app"]
     restart: unless-stopped
+
+  postgres-users:
+    image: postgres:18-alpine
+    container_name: postgres_users
+    environment:
+      POSTGRES_USER: ${USERS_DB_USER:-users_user}
+      POSTGRES_PASSWORD: ${USERS_DB_PASSWORD:-users_pass123}
+      POSTGRES_DB: ${USERS_DB_NAME:-users_db}
+    ports:
+      - "5437:5432"
+    volumes:
+      - postgres_users_data:/var/lib/postgresql/data
+    networks:
+      - network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U users_user -d users_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   users-service:
     build:
       context: .
       dockerfile: Dockerfile
-      target: users-service
-    container_name: kanban_users_service
+      args:
+        SERVICE: users-service
+    container_name: users_service
     environment:
-      - NODE_ENV=development
-      - DATABASE_URL=postgresql://kanban:kanban123@postgres:5432/kanban
+      - DATABASE_URL=postgresql://users_user:users_pass123@postgres-users:5432/users_db
+      - DB_HOST=${USERS_DB_HOST:-postgres-users}
+      - DB_PORT=${USERS_DB_PORT:-5432}
+      - DB_USER=${USERS_DB_USER:-users_user}
+      - DB_PASSWORD=${USERS_DB_PASSWORD:-users_pass123}
+      - DB_NAME=${USERS_DB_NAME:-users_db}
       - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
+      - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
+      - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
+      - RABBITMQ_USER=${RABBITMQ_USER:-admin}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-admin123}
     depends_on:
-      postgres:
+      postgres-users:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
     networks:
-      - kanban_network
-    volumes:
-      - ./apps/users-service:/app/apps/users-service
-      - ./libs:/app/libs
-    command: npm run start:dev:users
+      - network
+    command: ["./app"]
     restart: unless-stopped
 
   teams-service:
     build:
       context: .
       dockerfile: Dockerfile
-      target: teams-service
-    container_name: kanban_teams_service
+      args:
+        SERVICE: teams-service
+    container_name: teams_service
     environment:
-      - NODE_ENV=development
-      - DATABASE_URL=postgresql://kanban:kanban123@postgres:5432/kanban
+      - DATABASE_URL=postgresql://teams_user:teams_pass123@postgres-teams:5432/teams_db
+      - DB_HOST=${TEAMS_DB_HOST:-postgres-teams}
+      - DB_PORT=${TEAMS_DB_PORT:-5432}
+      - DB_USER=${TEAMS_DB_USER:-teams_user}
+      - DB_PASSWORD=${TEAMS_DB_PASSWORD:-teams_pass123}
+      - DB_NAME=${TEAMS_DB_NAME:-teams_db}
       - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
+      - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
+      - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
+      - RABBITMQ_USER=${RABBITMQ_USER:-admin}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-admin123}
     depends_on:
-      postgres:
+      postgres-teams:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
     networks:
-      - kanban_network
-    volumes:
-      - ./apps/teams-service:/app/apps/teams-service
-      - ./libs:/app/libs
-    command: npm run start:dev:teams
+      - network
+    command: ["./app"]
     restart: unless-stopped
 
   boards-service:
     build:
       context: .
       dockerfile: Dockerfile
-      target: boards-service
-    container_name: kanban_boards_service
+      args:
+        SERVICE: boards-service
+    container_name: boards_service
     environment:
-      - NODE_ENV=development
-      - DATABASE_URL=postgresql://kanban:kanban123@postgres:5432/kanban
+      - DATABASE_URL=postgresql://boards_user:boards_pass123@postgres-boards:5432/boards_db
+      - DB_HOST=${BOARDS_DB_HOST:-postgres-boards}
+      - DB_PORT=${BOARDS_DB_PORT:-5432}
+      - DB_USER=${BOARDS_DB_USER:-boards_user}
+      - DB_PASSWORD=${BOARDS_DB_PASSWORD:-boards_pass123}
+      - DB_NAME=${BOARDS_DB_NAME:-boards_db}
       - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
+      - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
+      - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
+      - RABBITMQ_USER=${RABBITMQ_USER:-admin}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-admin123}
     depends_on:
-      postgres:
+      postgres-boards:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
     networks:
-      - kanban_network
-    volumes:
-      - ./apps/boards-service:/app/apps/boards-service
-      - ./libs:/app/libs
-    command: npm run start:dev:boards
+      - network
+    command: ["./app"]
     restart: unless-stopped
 
   tasks-service:
     build:
       context: .
       dockerfile: Dockerfile
-      target: tasks-service
-    container_name: kanban_tasks_service
+      args:
+        SERVICE: tasks-service
+    container_name: tasks_service
     environment:
-      - NODE_ENV=development
-      - DATABASE_URL=postgresql://kanban:kanban123@postgres:5432/kanban
-      - MONGODB_URI=mongodb://mongodb:27017/kanban
+      - DATABASE_URL=postgresql://tasks_user:tasks_pass123@postgres-tasks:5432/tasks_db
+      - DB_HOST=${TASKS_DB_HOST:-postgres-tasks}
+      - DB_PORT=${TASKS_DB_PORT:-5432}
+      - DB_USER=${TASKS_DB_USER:-tasks_user}
+      - DB_PASSWORD=${TASKS_DB_PASSWORD:-tasks_pass123}
+      - DB_NAME=${TASKS_DB_NAME:-tasks_db}
+      - MONGODB_URI=mongodb://mongodb-tasks:27017/tasks_mongo
+      - MONGO_HOST=${TASKS_MONGO_HOST:-mongodb-tasks}
+      - MONGO_PORT=${TASKS_MONGO_PORT:-27017}
+      - MONGO_DB=${TASKS_MONGO_DB:-tasks_mongo}
       - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
+      - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
+      - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
+      - RABBITMQ_USER=${RABBITMQ_USER:-admin}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-admin123}
     depends_on:
-      postgres:
+      postgres-tasks:
         condition: service_healthy
-      mongodb:
+      mongodb-tasks:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
     networks:
-      - kanban_network
-    volumes:
-      - ./apps/tasks-service:/app/apps/tasks-service
-      - ./libs:/app/libs
-    command: npm run start:dev:tasks
+      - network
+    command: ["./app"]
     restart: unless-stopped
 
 networks:
-  kanban_network:
+  network:
     driver: bridge
 
 volumes:
-  postgres_data:
-  mongodb_data:
+  postgres_auth_data:
+  postgres_users_data:
+  postgres_teams_data:
+  postgres_boards_data:
+  postgres_tasks_data:
+  mongodb_tasks_data:
   rabbitmq_data:
-
