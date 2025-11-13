@@ -11,7 +11,6 @@ instance.interceptors.request.use(
   (config) => {
     const tokens = AuthStorage.getTokens()
     if (tokens?.accessToken) {
-      config.headers = config.headers ?? {}
       config.headers.Authorization = `Bearer ${tokens.accessToken}`
     }
     return config

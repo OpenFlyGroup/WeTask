@@ -7,7 +7,7 @@ const { buildUrl } = new UrlBuilder(PATH)
 
 export const BoardsService = {
   async getBoards() {
-    return (await instance.get<Board[]>(buildUrl('/'))).data
+    return (await instance.get<Board[]>(buildUrl(''))).data
   },
 
   async getBoardById(id: number) {
@@ -15,7 +15,7 @@ export const BoardsService = {
   },
 
   async createBoard(data: CreateBoardDto) {
-    return (await instance.post<Board>(buildUrl('/'), data)).data
+    return (await instance.post<Board>(buildUrl(''), data)).data
   },
 
   async updateBoard(id: number, data: UpdateBoardDto) {

@@ -13,7 +13,7 @@ export const ColumnsService = {
   },
 
   async createColumn(data: CreateColumnDto) {
-    return (await instance.post<Column>(buildUrl('/'), data)).data
+    return (await instance.post<Column>(buildUrl(''), data)).data
   },
 
   async updateColumn(id: number, data: UpdateColumnDto) {
