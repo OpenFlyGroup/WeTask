@@ -12,7 +12,7 @@ const { buildUrl } = new UrlBuilder(PATH)
 
 export const TeamsService = {
   async getTeams() {
-    return (await instance.get<Team[]>(buildUrl('/'))).data
+    return (await instance.get<Team[]>(buildUrl(''))).data
   },
 
   async getTeamById(id: number) {
@@ -20,7 +20,7 @@ export const TeamsService = {
   },
 
   async createTeam(data: CreateTeamDto) {
-    return (await instance.post<Team>(buildUrl('/'), data)).data
+    return (await instance.post<Team>(buildUrl(''), data)).data
   },
 
   async addMember(teamId: number, data: AddMemberDto) {

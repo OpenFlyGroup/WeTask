@@ -22,7 +22,7 @@ export const TasksService = {
   },
 
   async createTask(data: CreateTaskDto) {
-    return (await instance.post<Task>(buildUrl('/'), data)).data
+    return (await instance.post<Task>(buildUrl(''), data)).data
   },
 
   async updateTask(id: number, data: UpdateTaskDto) {
