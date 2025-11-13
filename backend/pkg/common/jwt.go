@@ -20,14 +20,15 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-// ? GenerateToken generates a JWT token
-func GenerateToken(userID uint, expirationTime time.Duration) (string, error) {
-	expirationTimePoint := time.Now().Add(expirationTime)
+// ? GenerateToken generates a JWT token. The caller provides issuedAt so
+// the auth service can ensure the token's IssuedAt exactly matches stored metadata.
+func GenerateToken(userID uint, expirationTime time.Duration, issuedAt time.Time) (string, error) {
+	expirationTimePoint := issuedAt.Add(expirationTime)
 	claims := &Claims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTimePoint),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			IssuedAt:  jwt.NewNumericDate(issuedAt),
 		},
 	}
 

@@ -322,6 +322,14 @@ func handleValidate(token string) common.RPCResponse {
 		return common.RPCResponse{Success: false, Error: "User not found", StatusCode: 401}
 	}
 
+	// ? Ensure token's issued-at matches user's LastAccessTokenAt
+	if claims.IssuedAt == nil {
+		return common.RPCResponse{Success: false, Error: "Invalid token (missing iat)", StatusCode: 401}
+	}
+	if claims.IssuedAt.Time.Unix() != authUser.LastAccessTokenAt.Unix() {
+		return common.RPCResponse{Success: false, Error: "Token has been invalidated", StatusCode: 401}
+	}
+
 	// ? Fetch rich profile from users service (if available)
 	if resp, err := common.CallRPC(common.UsersGetByID, map[string]any{"id": authUser.ID}); err == nil && resp != nil && resp.Success {
 		if dataMap, ok := resp.Data.(map[string]any); ok {
@@ -340,7 +348,7 @@ func handleValidate(token string) common.RPCResponse {
 
 func generateTokens(userID uint) (map[string]string, error) {
 	now := time.Now()
-	accessToken, err := common.GenerateToken(userID, 15*time.Minute)
+	accessToken, err := common.GenerateToken(userID, 15*time.Minute, now)
 	if err != nil {
 		return nil, err
 	}
