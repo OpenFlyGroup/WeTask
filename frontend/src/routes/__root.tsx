@@ -1,3 +1,4 @@
+'use client'
 import {
   HeadContent,
   Scripts,
@@ -16,6 +17,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
 import Footer from '@/shared/ui/layout/Footer/Footer'
 import Header from '@/shared/ui/layout/Header/Header'
+import { useEffect, useState } from 'react'
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -35,18 +37,11 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   const routerState = useRouterState()
+  const [isClient, setIsClient] = useState(false)
 
-  const canUseLocalStorage = (() => {
-    try {
-      if (typeof window === 'undefined') return false
-      const k = '__wetask_ls_check__'
-      window.localStorage?.setItem(k, '1')
-      window.localStorage?.removeItem(k)
-      return true
-    } catch {
-      return false
-    }
-  })()
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   return (
     <html lang="en">
@@ -73,20 +68,23 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 
         <Footer />
 
-        {canUseLocalStorage && (
-          <TanStackDevtools
-            config={{ position: 'bottom-right' }}
-            plugins={[
-              {
-                name: 'Tanstack Router',
-                render: <TanStackRouterDevtoolsPanel />,
-              },
-              TanStackQueryDevtools,
-            ]}
-          />
+        {isClient && (
+          <>
+            <Toaster position="bottom-right" reverseOrder={false} />
+            {import.meta.env.DEV && (
+              <TanStackDevtools
+                config={{ position: 'bottom-right' }}
+                plugins={[
+                  {
+                    name: 'Router',
+                    render: <TanStackRouterDevtoolsPanel />,
+                  },
+                  TanStackQueryDevtools,
+                ]}
+              />
+            )}
+          </>
         )}
-
-        <Toaster position="bottom-right" reverseOrder={false} />
         <Scripts />
       </body>
     </html>

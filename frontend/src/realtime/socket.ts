@@ -1,5 +1,4 @@
-import { API_BASE_URL } from '../api/http'
-
+const API_BASE_URL = 'ws://localhost:3000/ws'
 let socket: any | null = null
 let loadingPromise: Promise<any> | null = null
 
@@ -37,5 +36,3 @@ export async function disconnectSocket() {
   }
   socket = null
 }
-
-

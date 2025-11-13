@@ -1,17 +1,18 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { authStorage } from '../../api/http'
-import { createBoard, deleteBoard, getBoards, type Board } from '../../api/boards'
 import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { getTeams } from '../../api/teams'
-import { getMe } from '../../api/users'
 import { getSocket } from '../../realtime/socket'
 import { RealtimeEvents } from '../../realtime/events'
+import AuthStorage from '@/store/auth'
+import { BoardsService } from '@/api/services/boards/boards.service'
+import { TeamsService } from '@/api/services/teams/teams.service'
+import { UsersService } from '@/api/services/users/users.service'
+import { Board } from '@/api/services/boards/boards.interface'
 
 export const Route = createFileRoute('/boards/')({
   beforeLoad: () => {
-    if (!authStorage.getTokens()) {
+    if (!AuthStorage.getTokens()) {
       throw redirect({ to: '/auth/login' })
     }
   },
@@ -22,15 +23,21 @@ function BoardsPage() {
   const qc = useQueryClient()
   const { data, isLoading, error } = useQuery({
     queryKey: ['boards'],
-    queryFn: ({ signal }) => getBoards(signal),
+    queryFn: () => BoardsService.getBoards(),
   })
-  const teamsQ = useQuery({ queryKey: ['teams'], queryFn: ({ signal }) => getTeams(signal) })
-  const meQ = useQuery({ queryKey: ['me'], queryFn: ({ signal }) => getMe(signal) })
+  const teamsQ = useQuery({
+    queryKey: ['teams'],
+    queryFn: () => TeamsService.getTeams(),
+  })
+  const meQ = useQuery({
+    queryKey: ['me'],
+    queryFn: () => UsersService.getMe(),
+  })
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
 
   const createMut = useMutation({
-    mutationFn: () => createBoard({ name, description }),
+    mutationFn: () => BoardsService.createBoard({ name, description }),
     onSuccess: () => {
       setName('')
       setDescription('')
@@ -38,7 +45,6 @@ function BoardsPage() {
     },
   })
 
-  // Realtime: join all team rooms to receive board updates
   useEffect(() => {
     if (!teamsQ.data || !meQ.data) return
     let mounted = true
@@ -46,8 +52,11 @@ function BoardsPage() {
       const socket = await getSocket()
       if (!socket || !mounted) return
       const teamIds = teamsQ.data!.map((t) => t.id)
-      teamIds.forEach((teamId) => socket.emit('join:team', { teamId, userId: meQ.data!.id }))
-      const onBoardUpdated = () => void qc.invalidateQueries({ queryKey: ['boards'] })
+      teamIds.forEach((teamId) =>
+        socket.emit('join:team', { teamId, userId: meQ.data!.id }),
+      )
+      const onBoardUpdated = () =>
+        void qc.invalidateQueries({ queryKey: ['boards'] })
       socket.on(RealtimeEvents.BOARD_UPDATED, onBoardUpdated)
       return () => {
         teamIds.forEach((teamId) => socket.emit('leave:team', { teamId }))
@@ -60,7 +69,7 @@ function BoardsPage() {
   }, [teamsQ.data, meQ.data, qc])
 
   const deleteMut = useMutation({
-    mutationFn: (id: number) => deleteBoard(id),
+    mutationFn: (id: number) => BoardsService.deleteBoard(id),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['boards'] })
     },
@@ -111,7 +120,9 @@ function BoardsPage() {
       </form>
 
       {isLoading ? <div>Loading...</div> : null}
-      {error ? <div className="alert alert-error">{(error as any).message}</div> : null}
+      {error ? (
+        <div className="alert alert-error">{(error as any).message}</div>
+      ) : null}
       <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {data?.map((b: Board) => (
           <li key={b.id} className="card bg-base-100 shadow">
@@ -121,7 +132,9 @@ function BoardsPage() {
                   {b.name}
                 </Link>
               </h2>
-              {b.description ? <div className="text-base-content/70">{b.description}</div> : null}
+              {b.description ? (
+                <div className="text-base-content/70">{b.description}</div>
+              ) : null}
               <div className="card-actions justify-end">
                 <button
                   className="btn btn-error btn-sm"
@@ -138,5 +151,3 @@ function BoardsPage() {
     </div>
   )
 }
-
-

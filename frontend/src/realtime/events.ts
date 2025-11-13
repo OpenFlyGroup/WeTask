@@ -8,5 +8,3 @@ export const RealtimeEvents = {
 } as const
 
 export type RealtimeEventKey = keyof typeof RealtimeEvents
-
-

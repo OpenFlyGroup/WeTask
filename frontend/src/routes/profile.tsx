@@ -1,12 +1,12 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { authStorage } from '../api/http'
-import { getMe, updateUser } from '../api/users'
 import { useState, useEffect } from 'react'
+import AuthStorage from '@/store/auth'
+import { UsersService } from '@/api/services/users/users.service'
 
 export const Route = createFileRoute('/profile')({
   beforeLoad: () => {
-    if (!authStorage.getTokens()) {
+    if (!AuthStorage.getTokens()) {
       throw redirect({ to: '/auth/login' })
     }
   },
@@ -15,21 +15,25 @@ export const Route = createFileRoute('/profile')({
 
 function ProfilePage() {
   const qc = useQueryClient()
-  const { data, isLoading, error } = useQuery({ queryKey: ['me'], queryFn: ({ signal }) => getMe(signal) })
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['me'],
+    queryFn: () => UsersService.getMe(),
+  })
   const [name, setName] = useState('')
   useEffect(() => {
     if (data?.name) setName(data.name)
   }, [data])
 
   const updateMut = useMutation({
-    mutationFn: () => updateUser(data!.id, { name }),
+    mutationFn: () => UsersService.updateUser(Number(data!.id), { name }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['me'] })
     },
   })
 
   if (isLoading) return <div className="loading loading-spinner loading-md" />
-  if (error) return <div className="alert alert-error">{(error as any).message}</div>
+  if (error)
+    return <div className="alert alert-error">{(error as any).message}</div>
 
   return (
     <div className="max-w-lg">
@@ -43,26 +47,24 @@ function ProfilePage() {
             <div className="font-medium">{data?.email}</div>
           </div>
           <form
-          className="flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            updateMut.mutate()
-          }}
-        >
-          <input
-            className="input input-bordered flex-1"
-            placeholder="Your name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <button className="btn btn-primary" disabled={updateMut.isPending}>
-            Save
-          </button>
-        </form>
+            className="flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              updateMut.mutate()
+            }}
+          >
+            <input
+              className="input input-bordered flex-1"
+              placeholder="Your name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <button className="btn btn-primary" disabled={updateMut.isPending}>
+              Save
+            </button>
+          </form>
         </div>
       </div>
     </div>
   )
 }
-
-

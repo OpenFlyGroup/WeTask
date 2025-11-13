@@ -1,15 +1,15 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { authStorage } from '../../api/http'
-import { addMember, createTeam, getTeamById, getTeams, removeMember } from '../../api/teams'
 import { useEffect, useState } from 'react'
-import { getMe } from '../../api/users'
 import { getSocket } from '../../realtime/socket'
 import { RealtimeEvents } from '../../realtime/events'
+import AuthStorage from '@/store/auth'
+import { TeamsService } from '@/api/services/teams/teams.service'
+import { UsersService } from '@/api/services/users/users.service'
 
 export const Route = createFileRoute('/teams/')({
   beforeLoad: () => {
-    if (!authStorage.getTokens()) {
+    if (!AuthStorage.getTokens()) {
       throw redirect({ to: '/auth/login' })
     }
   },
@@ -20,19 +20,21 @@ function TeamsPage() {
   const qc = useQueryClient()
   const { data, isLoading, error } = useQuery({
     queryKey: ['teams'],
-    queryFn: ({ signal }) => getTeams(signal),
+    queryFn: () => TeamsService.getTeams(),
   })
-  const meQ = useQuery({ queryKey: ['me'], queryFn: ({ signal }) => getMe(signal) })
+  const meQ = useQuery({
+    queryKey: ['me'],
+    queryFn: () => UsersService.getMe(),
+  })
   const [name, setName] = useState('')
   const createMut = useMutation({
-    mutationFn: () => createTeam({ name }),
+    mutationFn: () => TeamsService.createTeam({ name }),
     onSuccess: () => {
       setName('')
       void qc.invalidateQueries({ queryKey: ['teams'] })
     },
   })
 
-  // Realtime: join all teams and listen for membership changes and board updates
   useEffect(() => {
     if (!data || !meQ.data) return
     let mounted = true
@@ -40,11 +42,17 @@ function TeamsPage() {
       const socket = await getSocket()
       if (!socket || !mounted) return
       const teamIds = data!.map((t) => t.id)
-      teamIds.forEach((teamId) => socket.emit('join:team', { teamId, userId: meQ.data!.id }))
-      const refreshTeams = () => void qc.invalidateQueries({ queryKey: ['teams'] })
+      teamIds.forEach((teamId) =>
+        socket.emit('join:team', { teamId, userId: meQ.data!.id }),
+      )
+      const refreshTeams = () =>
+        void qc.invalidateQueries({ queryKey: ['teams'] })
       socket.on(RealtimeEvents.TEAM_MEMBER_ADDED, refreshTeams)
       socket.on(RealtimeEvents.TEAM_MEMBER_REMOVED, refreshTeams)
-      socket.on(RealtimeEvents.BOARD_UPDATED, () => void qc.invalidateQueries({ queryKey: ['boards'] }))
+      socket.on(
+        RealtimeEvents.BOARD_UPDATED,
+        () => void qc.invalidateQueries({ queryKey: ['boards'] }),
+      )
       return () => {
         teamIds.forEach((teamId) => socket.emit('leave:team', { teamId }))
         socket.off(RealtimeEvents.TEAM_MEMBER_ADDED, refreshTeams)
@@ -81,7 +89,10 @@ function TeamsPage() {
               />
             </label>
             <div className="md:col-span-1 flex items-end">
-              <button className="btn btn-primary w-full" disabled={createMut.isPending}>
+              <button
+                className="btn btn-primary w-full"
+                disabled={createMut.isPending}
+              >
                 {createMut.isPending ? 'Creating...' : 'Create'}
               </button>
             </div>
@@ -89,7 +100,9 @@ function TeamsPage() {
         </div>
       </form>
       {isLoading ? <div>Loading...</div> : null}
-      {error ? <div className="alert alert-error">{(error as any).message}</div> : null}
+      {error ? (
+        <div className="alert alert-error">{(error as any).message}</div>
+      ) : null}
       <ul className="flex flex-col gap-3">
         {(data ?? []).map((t) => (
           <li key={t.id} className="card bg-base-100 shadow">
@@ -103,17 +116,21 @@ function TeamsPage() {
 
 function TeamMembers({ teamId }: { teamId: number }) {
   const qc = useQueryClient()
-  const teamQ = useQuery({ queryKey: ['team', teamId], queryFn: ({ signal }) => getTeamById(teamId, signal) })
+  const teamQ = useQuery({
+    queryKey: ['team', teamId],
+    queryFn: () => TeamsService.getTeamById(teamId),
+  })
   const [userId, setUserId] = useState('')
   const addMut = useMutation({
-    mutationFn: () => addMember(teamId, { userId: Number(userId) }),
+    mutationFn: () =>
+      TeamsService.addMember(teamId, { userId: Number(userId) }),
     onSuccess: () => {
       setUserId('')
       void qc.invalidateQueries({ queryKey: ['team', teamId] })
     },
   })
   const removeMut = useMutation({
-    mutationFn: (uid: number) => removeMember(teamId, uid),
+    mutationFn: (uid: number) => TeamsService.removeMember(teamId, uid),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['team', teamId] })
     },
@@ -121,7 +138,9 @@ function TeamMembers({ teamId }: { teamId: number }) {
   return (
     <div className="card-body">
       <div className="flex items-center justify-between mb-2">
-        <div className="card-title">{teamQ.data?.name ?? `Team #${teamId}`}</div>
+        <div className="card-title">
+          {teamQ.data?.name ?? `Team #${teamId}`}
+        </div>
       </div>
       <form
         className="flex gap-2 mb-3"
@@ -146,7 +165,10 @@ function TeamMembers({ teamId }: { teamId: number }) {
         <div className="mb-1 font-medium">Members:</div>
         <ul className="flex flex-col gap-1">
           {(teamQ.data as any)?.members?.map?.((m: any) => (
-            <li key={m.userId} className="flex items-center justify-between bg-base-200 px-2 py-1 rounded">
+            <li
+              key={m.userId}
+              className="flex items-center justify-between bg-base-200 px-2 py-1 rounded"
+            >
               <span>
                 #{m.userId} {m.name ?? ''} {m.email ?? ''}
               </span>
@@ -164,5 +186,3 @@ function TeamMembers({ teamId }: { teamId: number }) {
     </div>
   )
 }
-
-

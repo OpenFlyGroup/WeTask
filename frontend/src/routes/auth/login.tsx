@@ -1,18 +1,20 @@
 import { createFileRoute, redirect, Link } from '@tanstack/react-router'
 import { useNavigate } from '@tanstack/react-router'
 import { useMutation } from '@tanstack/react-query'
-import { login } from '../../api/auth'
-import { authStorage } from '../../api/http'
 import { useState } from 'react'
 import { motion } from 'motion/react'
 import logo from 'src/assets/logo.svg'
 import { Eye, EyeClosed } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useForm } from '@tanstack/react-form'
+import AuthStorage from '@/store/auth'
+import { AuthService } from '@/api/services/auth/auth.service'
+import { isBrowser } from '@/utils/browser'
 
 export const Route = createFileRoute('/auth/login')({
   beforeLoad: () => {
-    if (authStorage.getTokens()) {
+    if (!isBrowser) return
+    if (AuthStorage.getTokens()) {
       throw redirect({ to: '/boards' })
     }
   },
@@ -30,7 +32,7 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
 
   const mutation = useMutation({
-    mutationFn: (values: LoginFormValues) => login(values),
+    mutationFn: (values: LoginFormValues) => AuthService.signIn(values),
     onSuccess: () => {
       toast.success('Logged in successfully!')
       navigate({ to: '/boards' })
@@ -80,8 +82,8 @@ export function LoginPage() {
                     !value
                       ? 'Email is required'
                       : !/^\S+@\S+\.\S+$/.test(value)
-                      ? 'Please enter a valid email'
-                      : undefined,
+                        ? 'Please enter a valid email'
+                        : undefined,
                   onBlur: ({ value }) => {
                     if (!value) return 'Email is required'
                     return undefined
@@ -105,11 +107,17 @@ export function LoginPage() {
                       placeholder="you@example.com"
                       autoComplete="email"
                       aria-invalid={field.state.meta.errors.length > 0}
-                      aria-describedby={field.state.meta.errors.length > 0 ? `${field.name}-error` : undefined}
+                      aria-describedby={
+                        field.state.meta.errors.length > 0
+                          ? `${field.name}-error`
+                          : undefined
+                      }
                     />
                     {field.state.meta.errors.length > 0 && (
                       <div id={`${field.name}-error`} className="label">
-                        <span className="label-text-alt text-error">{field.state.meta.errors.join(', ')}</span>
+                        <span className="label-text-alt text-error">
+                          {field.state.meta.errors.join(', ')}
+                        </span>
                       </div>
                     )}
                   </label>
@@ -124,11 +132,12 @@ export function LoginPage() {
                     !value
                       ? 'Password is required'
                       : value.length < 6
-                      ? 'Password must be at least 6 characters'
-                      : undefined,
+                        ? 'Password must be at least 6 characters'
+                        : undefined,
                   onBlur: ({ value }) => {
                     if (!value) return 'Password is required'
-                    if (value.length < 6) return 'Password must be at least 6 characters'
+                    if (value.length < 6)
+                      return 'Password must be at least 6 characters'
                     return undefined
                   },
                 }}
@@ -150,19 +159,31 @@ export function LoginPage() {
                       placeholder="Enter your password"
                       autoComplete="current-password"
                       aria-invalid={field.state.meta.errors.length > 0}
-                      aria-describedby={field.state.meta.errors.length > 0 ? `${field.name}-error` : undefined}
+                      aria-describedby={
+                        field.state.meta.errors.length > 0
+                          ? `${field.name}-error`
+                          : undefined
+                      }
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword((prev) => !prev)}
                       className="absolute right-2 top-9 btn btn-ghost btn-xs btn-circle h-8 w-8"
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      aria-label={
+                        showPassword ? 'Hide password' : 'Show password'
+                      }
                     >
-                      {showPassword ? <EyeClosed className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showPassword ? (
+                        <EyeClosed className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
                     </button>
                     {field.state.meta.errors.length > 0 && (
                       <div id={`${field.name}-error`} className="label">
-                        <span className="label-text-alt text-error">{field.state.meta.errors.join(', ')}</span>
+                        <span className="label-text-alt text-error">
+                          {field.state.meta.errors.join(', ')}
+                        </span>
                       </div>
                     )}
                   </label>
@@ -201,8 +222,16 @@ export function LoginPage() {
               >
                 {([canSubmit, isSubmitting]) => (
                   <motion.button
-                    whileHover={canSubmit && !isSubmitting && !mutation.isPending ? { scale: 1.02 } : {}}
-                    whileTap={canSubmit && !isSubmitting && !mutation.isPending ? { scale: 0.98 } : {}}
+                    whileHover={
+                      canSubmit && !isSubmitting && !mutation.isPending
+                        ? { scale: 1.02 }
+                        : {}
+                    }
+                    whileTap={
+                      canSubmit && !isSubmitting && !mutation.isPending
+                        ? { scale: 0.98 }
+                        : {}
+                    }
                     type="submit"
                     disabled={!canSubmit || isSubmitting || mutation.isPending}
                     className="btn btn-primary mt-2 w-full"
@@ -222,18 +251,31 @@ export function LoginPage() {
 
             <div className="text-center text-sm mt-6">
               Don't have an account?{' '}
-              <Link to="/auth/register" className="link link-primary font-medium">
+              <Link
+                to="/auth/register"
+                className="link link-primary font-medium"
+              >
                 Register
               </Link>
             </div>
 
             <div className="mt-4 text-xs text-center text-muted-foreground">
               By signing in you agree to our{' '}
-              <a className="link" href="/terms" target="_blank" rel="noopener noreferrer">
+              <a
+                className="link"
+                href="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 Terms
               </a>{' '}
               and{' '}
-              <a className="link" href="/privacy" target="_blank" rel="noopener noreferrer">
+              <a
+                className="link"
+                href="/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 Privacy Policy
               </a>
               .

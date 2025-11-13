@@ -1,17 +1,21 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { authStorage } from '../../api/http'
-import { getBoardById } from '../../api/boards'
-import { createColumn, deleteColumn, getColumnsByBoard } from '../../api/columns'
-import { addComment, createTask, deleteTask, getComments, getTasksByBoard, moveTask } from '../../api/tasks'
 import { useEffect, useMemo, useState } from 'react'
-import { getMe } from '../../api/users'
 import { getSocket } from '../../realtime/socket'
 import { RealtimeEvents } from '../../realtime/events'
+import AuthStorage from '@/store/auth'
+import { BoardsService } from '@/api/services/boards/boards.service'
+import { ColumnsService } from '@/api/services/columns/columns.service'
+import { UsersService } from '@/api/services/users/users.service'
+import { Task } from '@/api/services/tasks/tasks.interface'
+import { TasksService } from '@/api/services/tasks/tasks.service'
+import { isBrowser } from '@/utils/browser'
 
 export const Route = createFileRoute('/boards/$boardId')({
   beforeLoad: () => {
-    if (!authStorage.getTokens()) {
+    if (!isBrowser) return
+
+    if (!AuthStorage.getTokens()) {
       throw redirect({ to: '/auth/login' })
     }
   },
@@ -23,101 +27,135 @@ function BoardDetailPage() {
   const id = Number(boardId)
   const qc = useQueryClient()
 
-  const boardQ = useQuery({ queryKey: ['board', id], queryFn: ({ signal }) => getBoardById(id, signal) })
+  const boardQ = useQuery({
+    queryKey: ['board', id],
+    queryFn: () => BoardsService.getBoardById(id),
+  })
+
   const columnsQ = useQuery({
     queryKey: ['columns', id],
-    queryFn: ({ signal }) => getColumnsByBoard(id, signal),
+    queryFn: () => ColumnsService.getColumnsByBoard(id),
   })
+
   const tasksQ = useQuery({
     queryKey: ['tasks', id],
-    queryFn: ({ signal }) => getTasksByBoard(id, signal),
+    queryFn: () => TasksService.getTasksByBoard(id),
   })
-  const meQ = useQuery({ queryKey: ['me'], queryFn: ({ signal }) => getMe(signal) })
+
+  const meQ = useQuery({
+    queryKey: ['me'],
+    queryFn: () => UsersService.getMe(),
+  })
 
   const tasksByColumn = useMemo(() => {
-    const map: Record<number, Array<any>> = {}
-    for (const t of tasksQ.data ?? []) {
-      if (!map[t.columnId]) map[t.columnId] = []
-      map[t.columnId].push(t)
+    const map: Record<number, Task[]> = {}
+    for (const task of tasksQ.data ?? []) {
+      if (!map[task.columnId]) map[task.columnId] = []
+      map[task.columnId].push(task)
     }
     return map
   }, [tasksQ.data])
 
   const [newColumn, setNewColumn] = useState('')
   const createColMut = useMutation({
-    mutationFn: () => createColumn({ name: newColumn, boardId: id }),
+    mutationFn: () =>
+      ColumnsService.createColumn({ name: newColumn, boardId: id }),
     onSuccess: () => {
       setNewColumn('')
       void qc.invalidateQueries({ queryKey: ['columns', id] })
     },
   })
+
   const deleteColMut = useMutation({
-    mutationFn: (colId: number) => deleteColumn(colId),
+    mutationFn: (colId: number) => ColumnsService.deleteColumn(colId),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['columns', id] })
       void qc.invalidateQueries({ queryKey: ['tasks', id] })
     },
   })
 
-  // Realtime: join board room and listen for task updates
   useEffect(() => {
     if (!meQ.data) return
+
     let mounted = true
+    let cleanup: (() => void) | undefined
+
     void (async () => {
       const socket = await getSocket()
       if (!socket || !mounted) return
-      socket.emit('join:board', { boardId: id, userId: meQ.data!.id })
+
+      socket.emit('join:board', { boardId: id, userId: meQ.data.id })
+
       const invalidateBoardData = () => {
         void qc.invalidateQueries({ queryKey: ['tasks', id] })
         void qc.invalidateQueries({ queryKey: ['columns', id] })
       }
+
       socket.on(RealtimeEvents.TASK_CREATED, invalidateBoardData)
       socket.on(RealtimeEvents.TASK_UPDATED, invalidateBoardData)
       socket.on(RealtimeEvents.TASK_DELETED, invalidateBoardData)
-      return () => {
+
+      cleanup = () => {
         socket.emit('leave:board', { boardId: id })
         socket.off(RealtimeEvents.TASK_CREATED, invalidateBoardData)
         socket.off(RealtimeEvents.TASK_UPDATED, invalidateBoardData)
         socket.off(RealtimeEvents.TASK_DELETED, invalidateBoardData)
       }
     })()
+
     return () => {
       mounted = false
+      cleanup?.()
     }
-  }, [id, meQ.data, qc])
+  }, [id, meQ.data?.id, qc])
 
   const [newTaskTitle, setNewTaskTitle] = useState<Record<number, string>>({})
+
   const createTaskMut = useMutation({
-    mutationFn: (colId: number) =>
-      createTask({ title: newTaskTitle[colId], boardId: id, columnId: colId, description: '' }),
-    onSuccess: () => {
+    mutationFn: (colId: number) => {
+      const title = newTaskTitle[colId]
+      if (!title?.trim()) throw new Error('Title is required')
+      return TasksService.createTask({
+        title,
+        boardId: id,
+        columnId: colId,
+        description: '',
+      })
+    },
+    onSuccess: (_, colId) => {
+      setNewTaskTitle((s) => ({ ...s, [colId]: '' }))
       void qc.invalidateQueries({ queryKey: ['tasks', id] })
     },
   })
+
   const deleteTaskMut = useMutation({
-    mutationFn: (taskId: number) => deleteTask(taskId),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['tasks', id] })
-    },
+    mutationFn: (taskId: number) => TasksService.deleteTask(taskId),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['tasks', id] }),
   })
+
   const moveTaskMut = useMutation({
-    mutationFn: ({ taskId, toColumnId }: { taskId: number; toColumnId: number }) =>
-      moveTask(taskId, { columnId: toColumnId }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['tasks', id] })
-    },
+    mutationFn: ({
+      taskId,
+      toColumnId,
+    }: {
+      taskId: number
+      toColumnId: number
+    }) => TasksService.moveTask(taskId, { columnId: toColumnId }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['tasks', id] }),
   })
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold mb-4">{boardQ.data?.name ?? 'Board'}</h1>
+    <div className="p-4">
+      <h1 className="text-2xl font-semibold mb-4">
+        {boardQ.data?.name ?? 'Loading...'}
+      </h1>
 
       <div className="mb-6">
         <form
           className="card bg-base-100 shadow"
           onSubmit={(e) => {
             e.preventDefault()
-            createColMut.mutate()
+            if (newColumn.trim()) createColMut.mutate()
           }}
         >
           <div className="card-body">
@@ -128,15 +166,19 @@ function BoardDetailPage() {
                 </div>
                 <input
                   className="input input-bordered"
-                  placeholder="New column name"
+                  placeholder="Enter column name"
                   value={newColumn}
                   onChange={(e) => setNewColumn(e.target.value)}
                   required
                 />
               </label>
               <div className="md:col-span-1 flex items-end">
-                <button className="btn btn-primary w-full" disabled={createColMut.isPending}>
-                  Add Column
+                <button
+                  className="btn btn-primary w-full"
+                  type="submit"
+                  disabled={createColMut.isPending || !newColumn.trim()}
+                >
+                  {createColMut.isPending ? 'Adding...' : 'Add Column'}
                 </button>
               </div>
             </div>
@@ -159,57 +201,73 @@ function BoardDetailPage() {
                 </button>
               </div>
 
-            <form
-              className="flex gap-2"
-              onSubmit={(e) => {
-                e.preventDefault()
-                createTaskMut.mutate(col.id)
-              }}
-            >
-              <input
-                className="input input-bordered flex-1"
-                placeholder="Task title"
-                value={newTaskTitle[col.id] ?? ''}
-                onChange={(e) => setNewTaskTitle((s) => ({ ...s, [col.id]: e.target.value }))}
-                required
-              />
-              <button className="btn btn-success" disabled={createTaskMut.isPending}>
-                Add
-              </button>
-            </form>
+              <form
+                className="flex gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  const title = newTaskTitle[col.id]?.trim()
+                  if (title) createTaskMut.mutate(col.id)
+                }}
+              >
+                <input
+                  className="input input-bordered flex-1"
+                  placeholder="Task title"
+                  value={newTaskTitle[col.id] ?? ''}
+                  onChange={(e) =>
+                    setNewTaskTitle((s) => ({ ...s, [col.id]: e.target.value }))
+                  }
+                  required
+                />
+                <button
+                  className="btn btn-success"
+                  type="submit"
+                  disabled={createTaskMut.isPending}
+                >
+                  Add
+                </button>
+              </form>
 
-            <ul className="flex flex-col gap-2">
-              {(tasksByColumn[col.id] ?? []).map((t) => (
-                <li key={t.id} className="card bg-base-200">
-                  <div className="card-body p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium">{t.title}</div>
-                    <div className="flex items-center gap-2">
-                      <select
-                        className="select select-bordered select-sm"
-                        value={t.columnId}
-                        onChange={(e) => moveTaskMut.mutate({ taskId: t.id, toColumnId: Number(e.target.value) })}
-                      >
-                        {(columnsQ.data ?? []).map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        className="btn btn-error btn-xs"
-                        onClick={() => deleteTaskMut.mutate(t.id)}
-                      >
-                        Delete
-                      </button>
+              <ul className="flex flex-col gap-2">
+                {(tasksByColumn[col.id] ?? []).map((task) => (
+                  <li key={task.id} className="card bg-base-200">
+                    <div className="card-body p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="font-medium">{task.title}</div>
+                        <div className="flex items-center gap-2">
+                          <select
+                            className="select select-bordered select-sm"
+                            value={task.columnId}
+                            onChange={(e) => {
+                              const toColumnId = parseInt(e.target.value, 10)
+                              if (!isNaN(toColumnId)) {
+                                moveTaskMut.mutate({
+                                  taskId: task.id,
+                                  toColumnId,
+                                })
+                              }
+                            }}
+                          >
+                            {(columnsQ.data ?? []).map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.name}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            className="btn btn-error btn-xs"
+                            onClick={() => deleteTaskMut.mutate(task.id)}
+                            disabled={deleteTaskMut.isPending}
+                          >
+                            X
+                          </button>
+                        </div>
+                      </div>
+                      <TaskComments taskId={task.id} />
                     </div>
-                  </div>
-                  <TaskComments taskId={t.id} />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         ))}
       </div>
@@ -219,15 +277,24 @@ function BoardDetailPage() {
 
 function TaskComments({ taskId }: { taskId: number }) {
   const qc = useQueryClient()
-  const commentsQ = useQuery({ queryKey: ['comments', taskId], queryFn: ({ signal }) => getComments(taskId, signal) })
+  const commentsQ = useQuery({
+    queryKey: ['comments', taskId],
+    queryFn: () => TasksService.getComments(taskId),
+  })
+
   const [message, setMessage] = useState('')
+
   const addMut = useMutation({
-    mutationFn: () => addComment(taskId, { message }),
+    mutationFn: () => {
+      if (!message.trim()) throw new Error('Message is required')
+      return TasksService.addComment(taskId, { message })
+    },
     onSuccess: () => {
       setMessage('')
       void qc.invalidateQueries({ queryKey: ['comments', taskId] })
     },
   })
+
   return (
     <div className="mt-2">
       <ul className="text-sm flex flex-col gap-1 mb-2">
@@ -241,7 +308,7 @@ function TaskComments({ taskId }: { taskId: number }) {
         className="flex gap-2"
         onSubmit={(e) => {
           e.preventDefault()
-          addMut.mutate()
+          if (message.trim()) addMut.mutate()
         }}
       >
         <input
@@ -251,12 +318,14 @@ function TaskComments({ taskId }: { taskId: number }) {
           onChange={(e) => setMessage(e.target.value)}
           required
         />
-        <button className="btn btn-primary btn-sm" disabled={addMut.isPending}>
-          Add
+        <button
+          className="btn btn-primary btn-sm"
+          type="submit"
+          disabled={addMut.isPending || !message.trim()}
+        >
+          {addMut.isPending ? '...' : 'Add'}
         </button>
       </form>
     </div>
   )
 }
-
-

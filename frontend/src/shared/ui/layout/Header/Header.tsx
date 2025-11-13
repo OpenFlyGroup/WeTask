@@ -1,12 +1,12 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import { motion } from 'motion/react'
+import { isBrowser, motion } from 'motion/react'
 import logo from 'src/assets/logo.svg'
-import { authStorage } from '@/api/http'
 import { disconnectSocket } from '@/realtime/socket'
 import clsx from 'clsx'
+import AuthStorage from '@/store/auth'
 
 const Header = () => {
-  const isAuthed = Boolean(authStorage.getTokens())
+  const isAuthed = isBrowser ? AuthStorage.isAuthenticated() : false
   const routerState = useRouterState()
   const currentPath = routerState.location.pathname
 
@@ -73,7 +73,7 @@ const Header = () => {
               to="/auth/login"
               onClick={() => {
                 disconnectSocket()
-                authStorage.clear()
+                AuthStorage.clearTokens()
               }}
               className="btn btn-sm"
             >
