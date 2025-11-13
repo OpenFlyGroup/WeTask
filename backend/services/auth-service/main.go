@@ -41,7 +41,7 @@ func main() {
 	// ? Initialize JWT
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
-		jwtSecret = "your-super-secret-jwt-key-change-in-production"
+		jwtSecret = "SECRET_KEY"
 	}
 	common.InitJWT(jwtSecret)
 

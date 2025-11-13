@@ -65,3 +65,10 @@ fmt:
 test:
 	@go test ./...
 
+
+#?  Generate Swagger documentation
+swagger:
+	@echo "Generating Swagger documentation..."
+	@go install github.com/swaggo/swag/cmd/swag@latest
+	@swag init -g services/api-gateway/main.go -o services/api-gateway/docs
+	@echo "Swagger documentation generated in services/api-gateway/docs/"
