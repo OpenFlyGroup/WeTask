@@ -47,7 +47,7 @@ func MigrateAuthModels() error {
 		return fmt.Errorf("database not initialized")
 	}
 	return DB.AutoMigrate(
-		&models.User{},
+		&models.AuthUser{},
 		&models.RefreshToken{},
 	)
 }
