@@ -65,10 +65,11 @@ func CallRPC(pattern string, payload interface{}) (*RPCResponse, error) {
 		return nil, fmt.Errorf("failed to declare reply queue: %w", err)
 	}
 
-	// ? Consume response
+	// ? Consume response with unique consumer tag
+	consumerTag := fmt.Sprintf("consumer_%d", time.Now().UnixNano())
 	msgs, err := RabbitMQChannel.Consume(
 		replyQueue.Name, // * queue
-		"",              // * consumer
+		consumerTag,     // * consumer tag (must be unique per consumer)
 		true,            // * auto-ack
 		false,           // * exclusive
 		false,           // * no-local
@@ -78,6 +79,12 @@ func CallRPC(pattern string, payload interface{}) (*RPCResponse, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to register consumer: %w", err)
 	}
+	defer func() {
+		// ? Cancell consumer after request done
+		if err := RabbitMQChannel.Cancel(consumerTag, false); err != nil {
+			log.Printf("Warning: failed to cancel consumer: %v", err)
+		}
+	}()
 
 	// ? Serialize payload
 	body, err := json.Marshal(payload)
