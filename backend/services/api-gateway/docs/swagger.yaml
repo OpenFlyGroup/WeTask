@@ -1,0 +1,1540 @@
+basePath: /api
+definitions:
+  main.AddCommentRequest:
+    description: Add comment request
+    properties:
+      message:
+        description: Comment message
+        example: This looks good!
+        type: string
+    required:
+    - message
+    type: object
+  main.AddTeamMemberRequest:
+    description: Add team member request
+    properties:
+      role:
+        description: Member role (optional)
+        example: member
+        type: string
+      userId:
+        description: User ID to add
+        example: 2
+        type: integer
+    required:
+    - userId
+    type: object
+  main.AuthResponse:
+    description: Authentication response with tokens
+    properties:
+      accessToken:
+        description: JWT access token
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+      refreshToken:
+        description: JWT refresh token
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+    type: object
+  main.BoardResponse:
+    description: Board information response
+    properties:
+      createdAt:
+        description: Creation timestamp
+        example: "2024-01-01T00:00:00Z"
+        type: string
+      id:
+        description: Board ID
+        example: 1
+        type: integer
+      name:
+        description: Board name
+        example: Q1 Project
+        type: string
+      teamId:
+        description: Team ID
+        example: 1
+        type: integer
+      updatedAt:
+        description: Last update timestamp
+        example: "2024-01-01T00:00:00Z"
+        type: string
+    type: object
+  main.ColumnResponse:
+    description: Column information response
+    properties:
+      boardId:
+        description: Board ID
+        example: 1
+        type: integer
+      createdAt:
+        description: Creation timestamp
+        example: "2024-01-01T00:00:00Z"
+        type: string
+      id:
+        description: Column ID
+        example: 1
+        type: integer
+      name:
+        description: Column name
+        example: To Do
+        type: string
+      position:
+        description: Column position in board
+        example: 0
+        type: integer
+      updatedAt:
+        description: Last update timestamp
+        example: "2024-01-01T00:00:00Z"
+        type: string
+    type: object
+  main.CommentResponse:
+    description: Comment information response
+    properties:
+      createdAt:
+        description: Creation timestamp
+        example: "2024-01-01T00:00:00Z"
+        type: string
+      id:
+        description: Comment ID
+        example: 507f1f77bcf86cd799439011
+        type: string
+      message:
+        description: Comment message
+        example: This looks good!
+        type: string
+      taskId:
+        description: Associated task ID
+        example: 1
+        type: integer
+      updatedAt:
+        description: Last update timestamp
+        example: "2024-01-01T00:00:00Z"
+        type: string
+      userId:
+        description: Comment author user ID
+        example: 1
+        type: integer
+    type: object
+  main.CreateBoardRequest:
+    description: Board creation request
+    properties:
+      name:
+        description: Board name
+        example: Q1 Project
+        type: string
+      teamId:
+        description: Team ID
+        example: 1
+        type: integer
+    required:
+    - name
+    - teamId
+    type: object
+  main.CreateColumnRequest:
+    description: Column creation request
+    properties:
+      boardId:
+        description: Board ID
+        example: 1
+        type: integer
+      name:
+        description: Column name
+        example: To Do
+        type: string
+      position:
+        description: Column position
+        example: 0
+        type: integer
+    required:
+    - boardId
+    - name
+    type: object
+  main.CreateTaskRequest:
+    description: Task creation request
+    properties:
+      assignedTo:
+        description: Assigned user ID (optional)
+        example: 2
+        type: integer
+      columnId:
+        description: Column ID
+        example: 1
+        type: integer
+      description:
+        description: Task description (optional)
+        example: Add new feature to the app
+        type: string
+      priority:
+        description: 'Task priority: low, medium, high (optional)'
+        example: high
+        type: string
+      title:
+        description: Task title
+        example: Implement feature
+        type: string
+    required:
+    - columnId
+    - title
+    type: object
+  main.CreateTeamRequest:
+    description: Team creation request
+    properties:
+      name:
+        description: Team name
+        example: Development Team
+        type: string
+    required:
+    - name
+    type: object
+  main.ErrorResponse:
+    description: Error response
+    properties:
+      error:
+        description: Error message
+        example: Invalid request
+        type: string
+    type: object
+  main.LoginRequest:
+    description: User login request
+    properties:
+      email:
+        description: User email address
+        example: user@example.com
+        type: string
+      password:
+        description: User password
+        example: password123
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  main.MoveTaskRequest:
+    description: Move task request
+    properties:
+      columnId:
+        description: Target column ID
+        example: 2
+        type: integer
+    required:
+    - columnId
+    type: object
+  main.RefreshRequest:
+    description: Token refresh request
+    properties:
+      refreshToken:
+        description: Refresh token
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+    required:
+    - refreshToken
+    type: object
+  main.RegisterRequest:
+    description: User registration request
+    properties:
+      email:
+        description: User email address
+        example: user@example.com
+        type: string
+      name:
+        description: User full name
+        example: John Doe
+        type: string
+      password:
+        description: User password (min 6 characters)
+        example: password123
+        minLength: 6
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
+  main.SuccessResponse:
+    description: Success response
+    properties:
+      success:
+        description: Success status
+        example: true
+        type: boolean
+    type: object
+  main.TaskResponse:
+    description: Task information response
+    properties:
+      assignedTo:
+        description: Assigned user ID (optional)
+        example: 2
+        type: integer
+      columnId:
+        description: Associated column ID
+        example: 1
+        type: integer
+      createdAt:
+        description: Creation timestamp
+        example: "2024-01-01T00:00:00Z"
+        type: string
+      description:
+        description: Task description (optional)
+        example: Add new feature to the app
+        type: string
+      id:
+        description: Task ID
+        example: 1
+        type: integer
+      priority:
+        description: 'Task priority: low, medium, high (optional)'
+        example: high
+        type: string
+      title:
+        description: Task title
+        example: Implement feature
+        type: string
+      updatedAt:
+        description: Last update timestamp
+        example: "2024-01-01T00:00:00Z"
+        type: string
+    type: object
+  main.TeamResponse:
+    description: Team information response
+    properties:
+      createdAt:
+        description: Creation timestamp
+        example: "2024-01-01T00:00:00Z"
+        type: string
+      id:
+        description: Team ID
+        example: 1
+        type: integer
+      name:
+        description: Team name
+        example: Development Team
+        type: string
+      updatedAt:
+        description: Last update timestamp
+        example: "2024-01-01T00:00:00Z"
+        type: string
+    type: object
+  main.UpdateBoardRequest:
+    description: Board update request
+    properties:
+      name:
+        description: Board name
+        example: Q2 Project
+        type: string
+    required:
+    - name
+    type: object
+  main.UpdateColumnRequest:
+    description: Column update request
+    properties:
+      name:
+        description: Column name
+        example: In Progress
+        type: string
+      position:
+        description: Column position
+        example: 1
+        type: integer
+    type: object
+  main.UpdateTaskRequest:
+    description: Task update request
+    properties:
+      assignedTo:
+        description: Updated assigned user ID (optional)
+        example: 3
+        type: integer
+      description:
+        description: Updated task description (optional)
+        example: Updated description
+        type: string
+      priority:
+        description: 'Updated priority: low, medium, high (optional)'
+        example: medium
+        type: string
+      title:
+        description: Updated task title (optional)
+        example: Updated task title
+        type: string
+    type: object
+  main.UpdateUserRequest:
+    description: User update request
+    properties:
+      email:
+        description: Updated user email (optional)
+        example: newemail@example.com
+        type: string
+      name:
+        description: Updated user name (optional)
+        example: John Doe Updated
+        type: string
+    type: object
+  main.UserResponse:
+    description: User information response
+    properties:
+      createdAt:
+        description: Creation timestamp
+        example: "2024-01-01T00:00:00Z"
+        type: string
+      email:
+        description: User email
+        example: user@example.com
+        type: string
+      id:
+        description: User ID
+        example: 1
+        type: integer
+      name:
+        description: User name
+        example: John Doe
+        type: string
+      updatedAt:
+        description: Last update timestamp
+        example: "2024-01-01T00:00:00Z"
+        type: string
+    type: object
+host: localhost:3000
+info:
+  contact:
+    email: support@wetask.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: API Gateway for WeTask - A collaborative task management system
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: WeTask API Gateway
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with email and password. Returns JWT access and
+        refresh tokens.
+      parameters:
+      - description: Login request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful - returns access and refresh tokens
+          schema:
+            $ref: '#/definitions/main.AuthResponse'
+        "400":
+          description: Invalid request - validation error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Invalid credentials
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Login user
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Get a new access token using a valid refresh token. Returns new
+        access and refresh tokens.
+      parameters:
+      - description: Refresh token request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Token refreshed successfully - returns new access and refresh
+            tokens
+          schema:
+            $ref: '#/definitions/main.AuthResponse'
+        "400":
+          description: Invalid request - validation error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Invalid or expired refresh token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Refresh access token
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new user with email, password, and name. Returns JWT
+        tokens for authentication.
+      parameters:
+      - description: Registration request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User registered successfully
+          schema:
+            $ref: '#/definitions/main.AuthResponse'
+        "400":
+          description: Invalid request - validation error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "409":
+          description: User already exists
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Register a new user
+      tags:
+      - auth
+  /boards:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all boards for teams where the user is a member
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of boards
+          schema:
+            items:
+              $ref: '#/definitions/main.BoardResponse'
+            type: array
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get all boards
+      tags:
+      - boards
+    post:
+      consumes:
+      - application/json
+      description: Create a new board in the specified team. User must be a team member.
+      parameters:
+      - description: Board creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.CreateBoardRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Board created successfully
+          schema:
+            $ref: '#/definitions/main.BoardResponse'
+        "400":
+          description: Invalid request - validation error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: Team not found or user not a team member
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new board
+      tags:
+      - boards
+  /boards/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a board and all its columns and tasks
+      parameters:
+      - description: Board ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Board deleted successfully
+          schema:
+            $ref: '#/definitions/main.SuccessResponse'
+        "400":
+          description: Invalid board ID format
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: Board not found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete board
+      tags:
+      - boards
+    get:
+      consumes:
+      - application/json
+      description: Get board information including columns and metadata
+      parameters:
+      - description: Board ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Board information
+          schema:
+            $ref: '#/definitions/main.BoardResponse'
+        "400":
+          description: Invalid board ID format
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: Board not found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get board by ID
+      tags:
+      - boards
+    put:
+      consumes:
+      - application/json
+      description: Update board name and metadata
+      parameters:
+      - description: Board ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Board update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.UpdateBoardRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Board updated successfully
+          schema:
+            $ref: '#/definitions/main.BoardResponse'
+        "400":
+          description: Invalid request - validation error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: Board not found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update board
+      tags:
+      - boards
+  /columns:
+    get:
+      consumes:
+      - application/json
+      description: Get all columns in the specified board
+      parameters:
+      - description: Board ID
+        example: 1
+        in: query
+        name: boardId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of columns
+          schema:
+            items:
+              $ref: '#/definitions/main.ColumnResponse'
+            type: array
+        "400":
+          description: Invalid board ID format
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: Board not found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get columns for board
+      tags:
+      - boards
+    post:
+      consumes:
+      - application/json
+      description: Create a new column in the specified board
+      parameters:
+      - description: Column creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.CreateColumnRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Column created successfully
+          schema:
+            $ref: '#/definitions/main.ColumnResponse'
+        "400":
+          description: Invalid request - validation error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: Board not found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new column
+      tags:
+      - boards
+  /columns/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a column and all its tasks
+      parameters:
+      - description: Column ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Column deleted successfully
+          schema:
+            $ref: '#/definitions/main.SuccessResponse'
+        "400":
+          description: Invalid column ID format
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: Column not found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete column
+      tags:
+      - boards
+    put:
+      consumes:
+      - application/json
+      description: Update column name and position
+      parameters:
+      - description: Column ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Column update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.UpdateColumnRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Column updated successfully
+          schema:
+            $ref: '#/definitions/main.ColumnResponse'
+        "400":
+          description: Invalid request - validation error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: Column not found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update column
+      tags:
+      - boards
+  /tasks:
+    post:
+      consumes:
+      - application/json
+      description: Create a new task in a column. Title and columnId are required;
+        other fields are optional.
+      parameters:
+      - description: Task creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.CreateTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Task created successfully
+          schema:
+            $ref: '#/definitions/main.TaskResponse'
+        "400":
+          description: Invalid request - validation error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: Column not found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new task
+      tags:
+      - tasks
+  /tasks/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a task by ID. This will also delete all comments associated
+        with the task.
+      parameters:
+      - description: Task ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Task deleted successfully
+          schema:
+            $ref: '#/definitions/main.SuccessResponse'
+        "400":
+          description: Invalid task ID format
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: Task not found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete task
+      tags:
+      - tasks
+    get:
+      consumes:
+      - application/json
+      description: Get task information by task ID including assigned user and column
+        details
+      parameters:
+      - description: Task ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Task information
+          schema:
+            $ref: '#/definitions/main.TaskResponse'
+        "400":
+          description: Invalid task ID format
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: Task not found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get task by ID
+      tags:
+      - tasks
+    put:
+      consumes:
+      - application/json
+      description: 'Update task information (title, description, priority, assignedTo).
+        All fields are optional. Priority: low, medium, high'
+      parameters:
+      - description: Task ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Update request - all fields optional
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.UpdateTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Task updated successfully
+          schema:
+            $ref: '#/definitions/main.TaskResponse'
+        "400":
+          description: Invalid request - validation error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: Task not found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update task
+      tags:
+      - tasks
+  /tasks/{id}/comment:
+    post:
+      consumes:
+      - application/json
+      description: Add a comment to a task. The comment author is automatically set
+        to the authenticated user.
+      parameters:
+      - description: Task ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Comment request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.AddCommentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Comment added successfully
+          schema:
+            $ref: '#/definitions/main.CommentResponse'
+        "400":
+          description: Invalid request - validation error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: Task not found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Add comment to task
+      tags:
+      - tasks
+  /tasks/{id}/comments:
+    get:
+      consumes:
+      - application/json
+      description: Get all comments for a specific task, ordered by creation date
+        (oldest first)
+      parameters:
+      - description: Task ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of comments
+          schema:
+            items:
+              $ref: '#/definitions/main.CommentResponse'
+            type: array
+        "400":
+          description: Invalid task ID format
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: Task not found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get task comments
+      tags:
+      - tasks
+  /tasks/{id}/move:
+    put:
+      consumes:
+      - application/json
+      description: Move a task from one column to another within the same board
+      parameters:
+      - description: Task ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Move request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.MoveTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Task moved successfully
+          schema:
+            $ref: '#/definitions/main.TaskResponse'
+        "400":
+          description: Invalid request - validation error or columns not in same board
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: Task or column not found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Move task to another column
+      tags:
+      - tasks
+  /tasks/board/{boardId}:
+    get:
+      consumes:
+      - application/json
+      description: Get all tasks for a specific board, organized by columns
+      parameters:
+      - description: Board ID
+        example: 1
+        in: path
+        name: boardId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of tasks
+          schema:
+            items:
+              $ref: '#/definitions/main.TaskResponse'
+            type: array
+        "400":
+          description: Invalid board ID format
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: Board not found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get tasks by board
+      tags:
+      - tasks
+  /teams:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all teams accessible to the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of teams
+          schema:
+            items:
+              $ref: '#/definitions/main.TeamResponse'
+            type: array
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get all teams
+      tags:
+      - teams
+    post:
+      consumes:
+      - application/json
+      description: Create a new team with the authenticated user as owner. The creator
+        is automatically added as a member.
+      parameters:
+      - description: Team creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.CreateTeamRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Team created successfully
+          schema:
+            $ref: '#/definitions/main.TeamResponse'
+        "400":
+          description: Invalid request - validation error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new team
+      tags:
+      - teams
+  /teams/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get team information by team ID including members and boards
+      parameters:
+      - description: Team ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Team information
+          schema:
+            $ref: '#/definitions/main.TeamResponse'
+        "400":
+          description: Invalid team ID format
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: Team not found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get team by ID
+      tags:
+      - teams
+  /teams/{id}/members:
+    post:
+      consumes:
+      - application/json
+      description: Add a user to a team with an optional role. The user must exist
+        in the system.
+      parameters:
+      - description: Team ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Add member request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.AddTeamMemberRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Member added successfully
+          schema:
+            $ref: '#/definitions/main.TeamResponse'
+        "400":
+          description: Invalid request - validation error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: Team or user not found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "409":
+          description: User is already a member of the team
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Add member to team
+      tags:
+      - teams
+  /teams/{id}/members/{userId}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a user from a team. The user will lose access to all team
+        boards.
+      parameters:
+      - description: Team ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: User ID
+        example: 2
+        in: path
+        name: userId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Member removed successfully
+          schema:
+            $ref: '#/definitions/main.SuccessResponse'
+        "400":
+          description: Invalid team or user ID format
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: Team or member not found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove member from team
+      tags:
+      - teams
+  /users/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get user information by user ID
+      parameters:
+      - description: User ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User information
+          schema:
+            $ref: '#/definitions/main.UserResponse'
+        "400":
+          description: Invalid user ID format
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user by ID
+      tags:
+      - users
+    patch:
+      consumes:
+      - application/json
+      description: Update user information (name and/or email). Both fields are optional.
+      parameters:
+      - description: User ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Update request - all fields optional
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User updated successfully
+          schema:
+            $ref: '#/definitions/main.UserResponse'
+        "400":
+          description: Invalid request - validation error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update user
+      tags:
+      - users
+  /users/me:
+    get:
+      consumes:
+      - application/json
+      description: Get the authenticated user's information. User ID is extracted
+        from JWT token.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User information
+          schema:
+            $ref: '#/definitions/main.UserResponse'
+        "401":
+          description: Unauthorized - invalid or missing token
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current user
+      tags:
+      - users
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
