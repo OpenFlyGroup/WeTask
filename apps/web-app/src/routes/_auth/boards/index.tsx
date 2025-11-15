@@ -27,8 +27,8 @@ function BoardsPage() {
     queryKey: ['me'],
     queryFn: () => UsersService.getMe(),
   })
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
+  const [name, setName] = useState<string>('')
+  const [description, setDescription] = useState<string>('')
 
   const createMut = useMutation({
     mutationFn: () => BoardsService.createBoard({ name, description }),
