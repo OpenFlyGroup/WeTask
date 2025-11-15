@@ -22,17 +22,15 @@ func main() {
 		log.Println("No .env file found")
 	}
 
-	// ? Initialize database
+	// ? Initialize PostgreSQL and migrate task models
 	if err := common.InitPostgreSQL(); err != nil {
 		log.Fatal("Failed to initialize PostgreSQL:", err)
 	}
-	
-	// ? Migrate tasks models
 	if err := common.MigrateTasksModels(); err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}
 
-	// ? Initialize MongoDB
+	// ? Initialize MongoDB (comments storage)
 	if err := common.InitMongoDB(); err != nil {
 		log.Fatal("Failed to initialize MongoDB:", err)
 	}
@@ -43,7 +41,7 @@ func main() {
 	}
 	defer common.CloseRabbitMQ()
 
-	// ? Declare queues
+	// ? Declare queues to consume
 	queues := []string{
 		common.TasksCreate,
 		common.TasksGetByID,
@@ -69,9 +67,9 @@ func main() {
 		}
 	}
 
-	// ? Start consuming messages
+	// ? Start consuming messages for each queue
 	for _, queue := range queues {
-		msgs, err := common.RabbitMQChannel.Consume(
+		messages, err := common.RabbitMQChannel.Consume(
 			queue, // * queue
 			"",    // * consumer
 			false, // * auto-ack
@@ -83,163 +81,142 @@ func main() {
 		if err != nil {
 			log.Fatal("Failed to register consumer:", err)
 		}
-
-		go handleMessages(queue, msgs)
+		go handleMessages(queue, messages)
 	}
 
 	log.Println("Tasks Service is running...")
 	select {} // ? Keep running
 }
 
-func handleMessages(queue string, msgs <-chan amqp.Delivery) {
-	for d := range msgs {
+// ? Handles incoming messages for task-related queues
+func handleMessages(queue string, messages <-chan amqp.Delivery) {
+	for delivery := range messages {
 		var response common.RPCResponse
 
 		switch queue {
 		case common.TasksCreate:
-			var data map[string]interface{}
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var req CreateTaskRequest
+			if err := json.Unmarshal(delivery.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				response = handleCreateTask(data)
+				response = handleCreateTask(req)
 			}
 		case common.TasksGetByID:
-			var data map[string]interface{}
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var req GetTaskByIDRequest
+			if err := json.Unmarshal(delivery.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				id, _ := data["id"].(float64)
-				response = handleGetTaskByID(uint(id))
+				response = handleGetTaskByID(req)
 			}
 		case common.TasksGetByBoard:
-			var data map[string]interface{}
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var req GetTasksByBoardRequest
+			if err := json.Unmarshal(delivery.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				boardID, _ := data["boardId"].(float64)
-				response = handleGetTasksByBoard(uint(boardID))
+				response = handleGetTasksByBoard(req)
 			}
 		case common.TasksUpdate:
-			var data map[string]interface{}
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var req UpdateTaskRequest
+			if err := json.Unmarshal(delivery.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				response = handleUpdateTask(data)
+				response = handleUpdateTask(req)
 			}
 		case common.TasksDelete:
-			var data map[string]interface{}
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var req DeleteTaskRequest
+			if err := json.Unmarshal(delivery.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				id, _ := data["id"].(float64)
-				response = handleDeleteTask(uint(id))
+				response = handleDeleteTask(req)
 			}
 		case common.TasksMove:
-			var data map[string]interface{}
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var req MoveTaskRequest
+			if err := json.Unmarshal(delivery.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				response = handleMoveTask(data)
+				response = handleMoveTask(req)
 			}
 		case common.TasksAddComment:
-			var data map[string]interface{}
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var req AddCommentRequest
+			if err := json.Unmarshal(delivery.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				response = handleAddComment(data)
+				response = handleAddComment(req)
 			}
 		case common.TasksGetComments:
-			var data map[string]interface{}
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var req GetCommentsRequest
+			if err := json.Unmarshal(delivery.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				taskID, _ := data["taskId"].(float64)
-				response = handleGetComments(uint(taskID))
+				response = handleGetComments(req)
 			}
 		}
 
 		// ? Send response
-		responseBody, _ := json.Marshal(response)
-		d.Ack(false)
+		body, _ := json.Marshal(response)
+		delivery.Ack(false)
 		common.RabbitMQChannel.Publish(
-			"",        // * exchange
-			d.ReplyTo, // * routing key
-			false,     // * mandatory
-			false,     // * immediate
+			"",               // * exchange
+			delivery.ReplyTo, // * routing key
+			false,            // * mandatory
+			false,            // * immediate
 			amqp.Publishing{
 				ContentType:   "application/json",
-				CorrelationId: d.CorrelationId,
-				Body:          responseBody,
+				CorrelationId: delivery.CorrelationId,
+				Body:          body,
 			},
 		)
 	}
 }
 
-func handleCreateTask(data map[string]interface{}) common.RPCResponse {
-	title, _ := data["title"].(string)
-	description, _ := data["description"].(string)
-	columnID, _ := data["columnId"].(float64)
-	assignedTo, ok := data["assignedTo"].(float64)
-	priority, _ := data["priority"].(string)
-	if priority == "" {
-		priority = "medium"
-	}
-
-	if title == "" {
+// ---------------------------------------------------------------------
+// TASK HANDLERS
+// ---------------------------------------------------------------------
+func handleCreateTask(req CreateTaskRequest) common.RPCResponse {
+	if req.Title == "" {
 		return common.RPCResponse{Success: false, Error: "Task title required", StatusCode: 400}
 	}
 
-	task := models.Task{
-		Title:       title,
-		Status:      "todo",
-		ColumnID:    uint(columnID),
-		Priority:    &priority,
+	priority := "medium"
+	if req.Priority != nil && *req.Priority != "" {
+		priority = *req.Priority
 	}
 
-	if description != "" {
-		task.Description = &description
-	}
-	if ok {
-		assignedToUint := uint(assignedTo)
-		task.AssignedTo = &assignedToUint
+	task := models.Task{
+		Title:       req.Title,
+		Status:      "todo",
+		ColumnID:    req.ColumnID,
+		Priority:    &priority,
+		Description: req.Description,
+		AssignedTo:  req.AssignedTo,
 	}
 
 	if err := common.DB.Create(&task).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Failed to create task", StatusCode: 500}
 	}
 
-	// ? Get column to find board ID
 	var column models.Column
 	common.DB.First(&column, task.ColumnID)
 
-	// ? Publish event
 	common.PublishEvent(common.TaskCreated, map[string]interface{}{
 		"boardId": column.BoardID,
 		"task":    task,
 	})
 
-	return common.RPCResponse{
-		Success: true,
-		Data:    task,
-	}
+	return toRPC(taskResponse{Success: true, Data: &task})
 }
 
-func handleGetTaskByID(id uint) common.RPCResponse {
+func handleGetTaskByID(req GetTaskByIDRequest) common.RPCResponse {
 	var task models.Task
-	if err := common.DB.Preload("Column").Preload("User").First(&task, id).Error; err != nil {
+	if err := common.DB.Preload("Column").Preload("User").First(&task, req.ID).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Task not found", StatusCode: 404}
 	}
-
-	return common.RPCResponse{
-		Success: true,
-		Data:    task,
-	}
+	return toRPC(taskResponse{Success: true, Data: &task})
 }
 
-func handleGetTasksByBoard(boardID uint) common.RPCResponse {
-	// ? Get all columns for this board
+func handleGetTasksByBoard(req GetTasksByBoardRequest) common.RPCResponse {
 	var columns []models.Column
-	common.DB.Where("board_id = ?", boardID).Find(&columns)
+	common.DB.Where("board_id = ?", req.BoardID).Find(&columns)
 
 	columnIDs := make([]uint, len(columns))
 	for i, c := range columns {
@@ -249,121 +226,96 @@ func handleGetTasksByBoard(boardID uint) common.RPCResponse {
 	var tasks []models.Task
 	common.DB.Where("column_id IN ?", columnIDs).Preload("User").Find(&tasks)
 
-	return common.RPCResponse{
-		Success: true,
-		Data:    tasks,
-	}
+	return toRPC(tasksListResponse{Success: true, Data: tasks})
 }
 
-func handleUpdateTask(data map[string]interface{}) common.RPCResponse {
-	id, _ := data["id"].(float64)
-
+func handleUpdateTask(req UpdateTaskRequest) common.RPCResponse {
 	var task models.Task
-	if err := common.DB.First(&task, uint(id)).Error; err != nil {
+	if err := common.DB.First(&task, req.ID).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Task not found", StatusCode: 404}
 	}
 
-	if title, ok := data["title"].(string); ok && title != "" {
-		task.Title = title
+	if req.Title != nil {
+		task.Title = *req.Title
 	}
-	if description, ok := data["description"].(string); ok {
-		task.Description = &description
+	if req.Description != nil {
+		task.Description = req.Description
 	}
-	if priority, ok := data["priority"].(string); ok && priority != "" {
-		task.Priority = &priority
+	if req.Priority != nil && *req.Priority != "" {
+		task.Priority = req.Priority
 	}
-	if assignedTo, ok := data["assignedTo"].(float64); ok {
-		assignedToUint := uint(assignedTo)
-		task.AssignedTo = &assignedToUint
+	if req.AssignedTo != nil {
+		task.AssignedTo = req.AssignedTo
 	}
 
 	if err := common.DB.Save(&task).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Failed to update task", StatusCode: 500}
 	}
 
-	// ? Get column to find board ID
 	var column models.Column
 	common.DB.First(&column, task.ColumnID)
 
-	// ? Publish event
 	common.PublishEvent(common.TaskUpdated, map[string]interface{}{
 		"boardId": column.BoardID,
 		"task":    task,
 	})
 
-	return common.RPCResponse{
-		Success: true,
-		Data:    task,
-	}
+	return toRPC(taskResponse{Success: true, Data: &task})
 }
 
-func handleDeleteTask(id uint) common.RPCResponse {
+func handleDeleteTask(req DeleteTaskRequest) common.RPCResponse {
 	var task models.Task
-	if err := common.DB.First(&task, id).Error; err != nil {
+	if err := common.DB.First(&task, req.ID).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Task not found", StatusCode: 404}
 	}
 
-	// ? Get column to find board ID
 	var column models.Column
 	common.DB.First(&column, task.ColumnID)
 	boardID := column.BoardID
 
 	common.DB.Delete(&task)
 
-	// ? Publish event
 	common.PublishEvent(common.TaskDeleted, map[string]interface{}{
 		"boardId": boardID,
-		"taskId":  id,
+		"taskId":  req.ID,
 	})
 
-	return common.RPCResponse{Success: true}
+	return toRPC(successResponse{Success: true})
 }
 
-func handleMoveTask(data map[string]interface{}) common.RPCResponse {
-	id, _ := data["id"].(float64)
-	columnID, _ := data["columnId"].(float64)
-
+func handleMoveTask(req MoveTaskRequest) common.RPCResponse {
 	var task models.Task
-	if err := common.DB.First(&task, uint(id)).Error; err != nil {
+	if err := common.DB.First(&task, req.ID).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Task not found", StatusCode: 404}
 	}
 
-	// ? Get old column for board ID
 	var oldColumn models.Column
 	common.DB.First(&oldColumn, task.ColumnID)
 	boardID := oldColumn.BoardID
 
-	task.ColumnID = uint(columnID)
+	task.ColumnID = req.ColumnID
 	if err := common.DB.Save(&task).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Failed to move task", StatusCode: 500}
 	}
 
-	// ? Publish event
 	common.PublishEvent(common.TaskUpdated, map[string]interface{}{
 		"boardId": boardID,
 		"task":    task,
 	})
 
-	return common.RPCResponse{
-		Success: true,
-		Data:    task,
-	}
+	return toRPC(taskResponse{Success: true, Data: &task})
 }
 
-func handleAddComment(data map[string]interface{}) common.RPCResponse {
-	taskID, _ := data["taskId"].(float64)
-	userID, _ := data["userId"].(float64)
-	message, _ := data["message"].(string)
-
-	if message == "" {
+func handleAddComment(req AddCommentRequest) common.RPCResponse {
+	if req.Message == "" {
 		return common.RPCResponse{Success: false, Error: "Comment message required", StatusCode: 400}
 	}
 
 	comment := models.Comment{
 		ID:        primitive.NewObjectID().Hex(),
-		TaskID:    uint(taskID),
-		UserID:    uint(userID),
-		Message:   message,
+		TaskID:    req.TaskID,
+		UserID:    req.UserID,
+		Message:   req.Message,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -374,15 +326,16 @@ func handleAddComment(data map[string]interface{}) common.RPCResponse {
 		return common.RPCResponse{Success: false, Error: "Failed to add comment", StatusCode: 500}
 	}
 
-	return common.RPCResponse{
-		Success: true,
-		Data:    comment,
-	}
+	return toRPC(commentResponse{Success: true, Data: &comment})
 }
 
-func handleGetComments(taskID uint) common.RPCResponse {
+func handleGetComments(req GetCommentsRequest) common.RPCResponse {
 	collection := common.MongoDB.Collection("comments")
-	cursor, err := collection.Find(context.Background(), bson.M{"taskId": taskID}, options.Find().SetSort(bson.D{{Key: "createdAt", Value: 1}}))
+	cursor, err := collection.Find(
+		context.Background(),
+		bson.M{"taskId": req.TaskID},
+		options.Find().SetSort(bson.D{{Key: "createdAt", Value: 1}}),
+	)
 	if err != nil {
 		return common.RPCResponse{Success: false, Error: "Failed to get comments", StatusCode: 500}
 	}
@@ -393,9 +346,5 @@ func handleGetComments(taskID uint) common.RPCResponse {
 		return common.RPCResponse{Success: false, Error: "Failed to decode comments", StatusCode: 500}
 	}
 
-	return common.RPCResponse{
-		Success: true,
-		Data:    comments,
-	}
+	return toRPC(commentsListResponse{Success: true, Data: comments})
 }
-

@@ -1,6 +1,11 @@
 package main
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+
+	"github.com/wetask/backend/pkg/common"
+)
 
 // ? Request DTOs
 type RegisterRequest struct {
@@ -46,4 +51,33 @@ type ValidateResponse struct {
 type RefreshResponse struct {
 	AccessToken  string `json:"accessToken"`
 	RefreshToken string `json:"refreshToken"`
+}
+
+// ? RPC wrapper types to unify with other services
+type authResponseWrapper struct {
+	Success    bool         `json:"success"`
+	Data       AuthResponse `json:"data,omitempty"`
+	Error      string       `json:"error,omitempty"`
+	StatusCode int          `json:"statusCode,omitempty"`
+}
+
+type refreshResponseWrapper struct {
+	Success    bool            `json:"success"`
+	Data       RefreshResponse `json:"data,omitempty"`
+	Error      string          `json:"error,omitempty"`
+	StatusCode int             `json:"statusCode,omitempty"`
+}
+
+type validateResponseWrapper struct {
+	Success    bool             `json:"success"`
+	Data       ValidateResponse `json:"data,omitempty"`
+	Error      string           `json:"error,omitempty"`
+	StatusCode int              `json:"statusCode,omitempty"`
+}
+
+func toRPC(v any) common.RPCResponse {
+	b, _ := json.Marshal(v)
+	var resp common.RPCResponse
+	_ = json.Unmarshal(b, &resp)
+	return resp
 }

@@ -90,34 +90,34 @@ func main() {
 }
 
 func handleMessages(queue string, msgs <-chan amqp.Delivery) {
-	for d := range msgs {
+	for delivery := range msgs {
 		var response common.RPCResponse
 
 		switch queue {
 		case common.AuthRegister:
 			var req RegisterRequest
-			if err := json.Unmarshal(d.Body, &req); err != nil {
+			if err := json.Unmarshal(delivery.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
 				response = handleRegister(req)
 			}
 		case common.AuthLogin:
 			var req LoginRequest
-			if err := json.Unmarshal(d.Body, &req); err != nil {
+			if err := json.Unmarshal(delivery.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
 				response = handleLogin(req)
 			}
 		case common.AuthRefresh:
 			var req RefreshRequest
-			if err := json.Unmarshal(d.Body, &req); err != nil {
+			if err := json.Unmarshal(delivery.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
 				response = handleRefresh(req)
 			}
 		case common.AuthValidate:
 			var req ValidateRequest
-			if err := json.Unmarshal(d.Body, &req); err != nil {
+			if err := json.Unmarshal(delivery.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
 				response = handleValidate(req)
@@ -126,15 +126,15 @@ func handleMessages(queue string, msgs <-chan amqp.Delivery) {
 
 		// ? Send response
 		responseBody, _ := json.Marshal(response)
-		d.Ack(false)
+		delivery.Ack(false)
 		common.RabbitMQChannel.Publish(
-			"",        // * exchange
-			d.ReplyTo, // * routing key
-			false,     // * mandatory
-			false,     // * immediate
+			"",               // * exchange
+			delivery.ReplyTo, // * routing key
+			false,            // * mandatory
+			false,            // * immediate
 			amqp.Publishing{
 				ContentType:   "application/json",
-				CorrelationId: d.CorrelationId,
+				CorrelationId: delivery.CorrelationId,
 				Body:          responseBody,
 			},
 		)
@@ -194,12 +194,12 @@ func handleRegister(req RegisterRequest) common.RPCResponse {
 
 	// ? Try to fetch rich profile from users service for response
 	var userResp *UserResponse
-	if resp, err := common.CallRPC(common.UsersGetByID, map[string]interface{}{"id": user.ID}); err == nil && resp != nil && resp.Success {
-		if data, ok := resp.Data.(map[string]interface{}); ok {
+	if rpcResp, err := common.CallRPC(common.UsersGetByID, map[string]interface{}{"id": user.ID}); err == nil && rpcResp != nil && rpcResp.Success {
+		if userData, ok := rpcResp.Data.(map[string]interface{}); ok {
 			userResp = &UserResponse{
-				ID:        uint(data["id"].(float64)),
-				Email:     data["email"].(string),
-				Name:      data["name"].(string),
+				ID:        uint(userData["id"].(float64)),
+				Email:     userData["email"].(string),
+				Name:      userData["name"].(string),
 				CreatedAt: user.CreatedAt,
 				UpdatedAt: user.UpdatedAt,
 			}
@@ -214,14 +214,11 @@ func handleRegister(req RegisterRequest) common.RPCResponse {
 		}
 	}
 
-	return common.RPCResponse{
-		Success: true,
-		Data: AuthResponse{
-			User:         userResp,
-			AccessToken:  tokens["accessToken"],
-			RefreshToken: tokens["refreshToken"],
-		},
-	}
+	return toRPC(authResponseWrapper{Success: true, Data: AuthResponse{
+		User:         userResp,
+		AccessToken:  tokens["accessToken"],
+		RefreshToken: tokens["refreshToken"],
+	}})
 }
 
 func handleLogin(req LoginRequest) common.RPCResponse {
@@ -278,14 +275,11 @@ func handleLogin(req LoginRequest) common.RPCResponse {
 		}
 	}
 
-	return common.RPCResponse{
-		Success: true,
-		Data: AuthResponse{
-			User:         userResp,
-			AccessToken:  tokens["accessToken"],
-			RefreshToken: tokens["refreshToken"],
-		},
-	}
+	return toRPC(authResponseWrapper{Success: true, Data: AuthResponse{
+		User:         userResp,
+		AccessToken:  tokens["accessToken"],
+		RefreshToken: tokens["refreshToken"],
+	}})
 }
 
 func handleRefresh(req RefreshRequest) common.RPCResponse {
@@ -308,13 +302,10 @@ func handleRefresh(req RefreshRequest) common.RPCResponse {
 	// ? Delete old refresh token
 	common.DB.Delete(&token)
 
-	return common.RPCResponse{
-		Success: true,
-		Data: RefreshResponse{
-			AccessToken:  tokens["accessToken"],
-			RefreshToken: tokens["refreshToken"],
-		},
-	}
+	return toRPC(refreshResponseWrapper{Success: true, Data: RefreshResponse{
+		AccessToken:  tokens["accessToken"],
+		RefreshToken: tokens["refreshToken"],
+	}})
 }
 
 func handleValidate(req ValidateRequest) common.RPCResponse {
@@ -341,26 +332,20 @@ func handleValidate(req ValidateRequest) common.RPCResponse {
 	}
 
 	// ? Fetch rich profile from users service (if available)
-	if resp, err := common.CallRPC(common.UsersGetByID, map[string]interface{}{"id": authUser.ID}); err == nil && resp != nil && resp.Success {
-		if data, ok := resp.Data.(map[string]interface{}); ok {
-			return common.RPCResponse{
-				Success: true,
-				Data: ValidateResponse{
-					ID:    uint(data["id"].(float64)),
-					Email: data["email"].(string),
-					Name:  data["name"].(string),
-				},
-			}
+	if rpcResp, err := common.CallRPC(common.UsersGetByID, map[string]interface{}{"id": authUser.ID}); err == nil && rpcResp != nil && rpcResp.Success {
+		if userData, ok := rpcResp.Data.(map[string]interface{}); ok {
+			return toRPC(validateResponseWrapper{Success: true, Data: ValidateResponse{
+				ID:    uint(userData["id"].(float64)),
+				Email: userData["email"].(string),
+				Name:  userData["name"].(string),
+			}})
 		}
 	}
 
-	return common.RPCResponse{
-		Success: true,
-		Data: ValidateResponse{
-			ID:    authUser.ID,
-			Email: authUser.Email,
-		},
-	}
+	return toRPC(validateResponseWrapper{Success: true, Data: ValidateResponse{
+		ID:    authUser.ID,
+		Email: authUser.Email,
+	}})
 }
 
 func generateTokens(userID uint) (map[string]string, error) {
@@ -390,12 +375,12 @@ func generateTokens(userID uint) (map[string]string, error) {
 
 	// ? Save new refresh token
 	expiresAt := now.Add(7 * 24 * time.Hour)
-	rt := models.RefreshToken{
+	refreshTokenRecord := models.RefreshToken{
 		Token:     refreshToken,
 		UserID:    userID,
 		ExpiresAt: expiresAt,
 	}
-	common.DB.Create(&rt)
+	common.DB.Create(&refreshTokenRecord)
 
 	return map[string]string{
 		"accessToken":  accessToken,

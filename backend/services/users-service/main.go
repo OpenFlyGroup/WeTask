@@ -17,12 +17,10 @@ func main() {
 		log.Println("No .env file found")
 	}
 
-	// ? Initialize database (users service has its own user data)
+	// ? Initialize database and migrate models
 	if err := common.InitPostgreSQL(); err != nil {
 		log.Fatal("Failed to initialize PostgreSQL:", err)
 	}
-
-	// ? Migrate users models (user profile data)
 	if err := common.MigrateUsersModels(); err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}
@@ -58,230 +56,176 @@ func main() {
 
 	// ? Start consuming messages
 	for _, queue := range queues {
-		msgs, err := common.RabbitMQChannel.Consume(
-			queue, // ? queue
-			"",    // ? consumer
-			false, // ? auto-ack
-			false, // ? exclusive
-			false, // ? no-local
-			false, // ? no-wait
-			nil,   // ? args
+		messages, err := common.RabbitMQChannel.Consume(
+			queue, // * queue
+			"",    // * consumer
+			false, // * auto-ack
+			false, // * exclusive
+			false, // * no-local
+			false, // * no-wait
+			nil,   // * args
 		)
 		if err != nil {
 			log.Fatal("Failed to register consumer:", err)
 		}
-
-		go handleMessages(queue, msgs)
+		go handleMessages(queue, messages)
 	}
 
 	log.Println("Users Service is running...")
 	select {} // ? Keep running
 }
 
-func handleMessages(queue string, msgs <-chan amqp.Delivery) {
-	for message := range msgs {
+// ? Handles incoming messages for user-related queues
+func handleMessages(queue string, messages <-chan amqp.Delivery) {
+	for delivery := range messages {
 		var response common.RPCResponse
 
 		switch queue {
 		case common.UsersCreate:
-			var data map[string]any
-			if err := json.Unmarshal(message.Body, &data); err != nil {
+			var req CreateUserRequest
+			if err := json.Unmarshal(delivery.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				response = handleCreate(data)
+				response = handleCreate(req)
 			}
+
 		case common.UsersGetByID:
-			var data map[string]any
-			if err := json.Unmarshal(message.Body, &data); err != nil {
+			var req GetUserByIDRequest
+			if err := json.Unmarshal(delivery.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				id, _ := data["id"].(float64)
-				response = handleGetByID(uint(id))
+				response = handleGetByID(req)
 			}
+
 		case common.UsersGetByEmail:
-			var data map[string]any
-			if err := json.Unmarshal(message.Body, &data); err != nil {
+			var req GetUserByEmailRequest
+			if err := json.Unmarshal(delivery.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				email, _ := data["email"].(string)
-				response = handleGetByEmail(email)
+				response = handleGetByEmail(req)
 			}
+
 		case common.UsersUpdate:
-			var data map[string]any
-			if err := json.Unmarshal(message.Body, &data); err != nil {
+			var req UpdateUserRequest
+			if err := json.Unmarshal(delivery.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				response = handleUpdate(data)
+				response = handleUpdate(req)
 			}
+
 		case common.UsersGetMe:
-			var data map[string]any
-			if err := json.Unmarshal(message.Body, &data); err != nil {
+			var req GetMeRequest
+			if err := json.Unmarshal(delivery.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				userID, _ := data["userId"].(float64)
-				response = handleGetMe(uint(userID))
+				response = handleGetMe(req)
 			}
 		}
 
 		// ? Send response
-		responseBody, _ := json.Marshal(response)
-		message.Ack(false)
+		body, _ := json.Marshal(response)
+		delivery.Ack(false)
 		common.RabbitMQChannel.Publish(
-			"",              // ? exchange
-			message.ReplyTo, // ? routing key
-			false,           // ? mandatory
-			false,           // ? immediate
+			"",               // * exchange
+			delivery.ReplyTo, // * routing key
+			false,            // * mandatory
+			false,            // * immediate
 			amqp.Publishing{
 				ContentType:   "application/json",
-				CorrelationId: message.CorrelationId,
-				Body:          responseBody,
+				CorrelationId: delivery.CorrelationId,
+				Body:          body,
 			},
 		)
 	}
 }
 
-func handleCreate(data map[string]any) common.RPCResponse {
-	id, _ := data["id"].(float64)
-	email, _ := data["email"].(string)
-	name, _ := data["name"].(string)
-
-	if email == "" || name == "" {
+func handleCreate(req CreateUserRequest) common.RPCResponse {
+	if req.Email == "" || req.Name == "" {
 		return common.RPCResponse{Success: false, Error: "Missing required fields", StatusCode: 400}
 	}
 
 	var existingUser models.User
-	if err := common.DB.First(&existingUser, uint(id)).Error; err == nil {
-		if existingUser.Email != email {
-			existingUser.Email = email
+	err := common.DB.First(&existingUser, req.ID).Error
+	if err == nil {
+		// ? User exists — update if needed
+		updated := false
+		if existingUser.Email != req.Email {
+			existingUser.Email = req.Email
+			updated = true
 		}
-		if existingUser.Name != name {
-			existingUser.Name = name
+		if existingUser.Name != req.Name {
+			existingUser.Name = req.Name
+			updated = true
 		}
-		common.DB.Save(&existingUser)
-		return common.RPCResponse{
-			Success: true,
-			Data: map[string]any{
-				"id":        existingUser.ID,
-				"email":     existingUser.Email,
-				"name":      existingUser.Name,
-				"createdAt": existingUser.CreatedAt,
-				"updatedAt": existingUser.UpdatedAt,
-			},
+		if updated {
+			if saveErr := common.DB.Save(&existingUser).Error; saveErr != nil {
+				return common.RPCResponse{Success: false, Error: "Failed to update user", StatusCode: 500}
+			}
 		}
+	} else {
+		// ? Create new user
+		user := models.User{
+			ID:    req.ID,
+			Email: req.Email,
+			Name:  req.Name,
+		}
+		if createErr := common.DB.Create(&user).Error; createErr != nil {
+			return common.RPCResponse{Success: false, Error: "Failed to create user", StatusCode: 500}
+		}
+		existingUser = user
 	}
 
-	user := models.User{
-		ID:    uint(id),
-		Email: email,
-		Name:  name,
-	}
-
-	if err := common.DB.Create(&user).Error; err != nil {
-		return common.RPCResponse{Success: false, Error: "Failed to create user", StatusCode: 500}
-	}
-
-	return common.RPCResponse{
+	return toRPC(userResponse{
 		Success: true,
-		Data: map[string]any{
-			"id":        user.ID,
-			"email":     user.Email,
-			"name":      user.Name,
-			"createdAt": user.CreatedAt,
-			"updatedAt": user.UpdatedAt,
-		},
-	}
+		Data:    &existingUser,
+	})
 }
 
-func handleGetByID(id uint) common.RPCResponse {
+func handleGetByID(req GetUserByIDRequest) common.RPCResponse {
 	var user models.User
-	if err := common.DB.First(&user, id).Error; err != nil {
+	if err := common.DB.First(&user, req.ID).Error; err != nil {
+		return common.RPCResponse{Success: false, Error: "User not found", StatusCode: 404}
+	}
+	return toRPC(userResponse{Success: true, Data: &user})
+}
+
+func handleGetByEmail(req GetUserByEmailRequest) common.RPCResponse {
+	var user models.User
+	if err := common.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
+		return common.RPCResponse{Success: false, Error: "User not found", StatusCode: 404}
+	}
+	return toRPC(userResponse{Success: true, Data: &user})
+}
+
+func handleUpdate(req UpdateUserRequest) common.RPCResponse {
+	var user models.User
+	if err := common.DB.First(&user, req.ID).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "User not found", StatusCode: 404}
 	}
 
-	return common.RPCResponse{
-		Success: true,
-		Data: map[string]any{
-			"id":        user.ID,
-			"email":     user.Email,
-			"name":      user.Name,
-			"createdAt": user.CreatedAt,
-			"updatedAt": user.UpdatedAt,
-		},
+	if req.Name != nil && *req.Name != "" {
+		user.Name = *req.Name
 	}
-}
-
-func handleGetByEmail(email string) common.RPCResponse {
-	var user models.User
-	if err := common.DB.Where("email = ?", email).First(&user).Error; err != nil {
-		return common.RPCResponse{Success: false, Error: "User not found", StatusCode: 404}
-	}
-
-	return common.RPCResponse{
-		Success: true,
-		Data: map[string]any{
-			"id":        user.ID,
-			"email":     user.Email,
-			"name":      user.Name,
-			"createdAt": user.CreatedAt,
-			"updatedAt": user.UpdatedAt,
-		},
-	}
-}
-
-func handleUpdate(data map[string]any) common.RPCResponse {
-	id, ok := data["id"].(float64)
-	if !ok {
-		return common.RPCResponse{Success: false, Error: "User ID required", StatusCode: 400}
-	}
-
-	var user models.User
-	if err := common.DB.First(&user, uint(id)).Error; err != nil {
-		return common.RPCResponse{Success: false, Error: "User not found", StatusCode: 404}
-	}
-
-	// ? Update fields
-	if name, ok := data["name"].(string); ok && name != "" {
-		user.Name = name
-	}
-	if email, ok := data["email"].(string); ok && email != "" {
-		// ? Check if email already exists
-		var existingUser models.User
-		if err := common.DB.Where("email = ? AND id != ?", email, id).First(&existingUser).Error; err == nil {
+	if req.Email != nil && *req.Email != "" {
+		// ? Check if email already exists (excluding current user)
+		var existing models.User
+		if err := common.DB.Where("email = ? AND id != ?", *req.Email, req.ID).First(&existing).Error; err == nil {
 			return common.RPCResponse{Success: false, Error: "Email already exists", StatusCode: 409}
 		}
-		user.Email = email
+		user.Email = *req.Email
 	}
 
 	if err := common.DB.Save(&user).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Failed to update user", StatusCode: 500}
 	}
 
-	return common.RPCResponse{
-		Success: true,
-		Data: map[string]any{
-			"id":        user.ID,
-			"email":     user.Email,
-			"name":      user.Name,
-			"createdAt": user.CreatedAt,
-			"updatedAt": user.UpdatedAt,
-		},
-	}
+	return toRPC(userResponse{Success: true, Data: &user})
 }
 
-func handleGetMe(userID uint) common.RPCResponse {
+func handleGetMe(req GetMeRequest) common.RPCResponse {
 	var user models.User
-	if err := common.DB.First(&user, userID).Error; err != nil {
+	if err := common.DB.First(&user, req.UserID).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "User not found", StatusCode: 404}
 	}
-
-	return common.RPCResponse{
-		Success: true,
-		Data: map[string]any{
-			"id":        user.ID,
-			"email":     user.Email,
-			"name":      user.Name,
-			"createdAt": user.CreatedAt,
-			"updatedAt": user.UpdatedAt,
-		},
-	}
+	return toRPC(userResponse{Success: true, Data: &user})
 }

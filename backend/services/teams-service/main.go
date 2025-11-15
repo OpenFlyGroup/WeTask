@@ -17,12 +17,10 @@ func main() {
 		log.Println("No .env file found")
 	}
 
-	// ? Initialize database
+	// ? Initialize database and migrate models
 	if err := common.InitPostgreSQL(); err != nil {
 		log.Fatal("Failed to initialize PostgreSQL:", err)
 	}
-	
-	// ? Migrate teams models
 	if err := common.MigrateTeamsModels(); err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}
@@ -59,7 +57,7 @@ func main() {
 
 	// ? Start consuming messages
 	for _, queue := range queues {
-		msgs, err := common.RabbitMQChannel.Consume(
+		messages, err := common.RabbitMQChannel.Consume(
 			queue, // * queue
 			"",    // * consumer
 			false, // * auto-ack
@@ -72,145 +70,133 @@ func main() {
 			log.Fatal("Failed to register consumer:", err)
 		}
 
-		go handleMessages(queue, msgs)
+		go handleMessages(queue, messages)
 	}
 
 	log.Println("Teams Service is running...")
 	select {} // ? Keep running
 }
 
-func handleMessages(queue string, msgs <-chan amqp.Delivery) {
-	for d := range msgs {
+func handleMessages(queue string, messages <-chan amqp.Delivery) {
+	for delivery := range messages {
 		var response common.RPCResponse
 
 		switch queue {
 		case common.TeamsCreate:
-			var data map[string]interface{}
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var req CreateTeamRequest
+			if err := json.Unmarshal(delivery.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				response = handleCreate(data)
+				response = handleCreate(req)
 			}
+
 		case common.TeamsGetAll:
 			response = handleGetAll()
+
 		case common.TeamsGetByID:
-			var data map[string]interface{}
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var req GetTeamByIDRequest
+			if err := json.Unmarshal(delivery.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				id, _ := data["id"].(float64)
-				response = handleGetByID(uint(id))
+				response = handleGetByID(req)
 			}
+
 		case common.TeamsAddMember:
-			var data map[string]interface{}
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var req AddMemberRequest
+			if err := json.Unmarshal(delivery.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				response = handleAddMember(data)
+				response = handleAddMember(req)
 			}
+
 		case common.TeamsRemoveMember:
-			var data map[string]interface{}
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var req RemoveMemberRequest
+			if err := json.Unmarshal(delivery.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				response = handleRemoveMember(data)
+				response = handleRemoveMember(req)
 			}
+
 		case common.TeamsGetUserTeams:
-			var data map[string]interface{}
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var req GetUserTeamsRequest
+			if err := json.Unmarshal(delivery.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				userID, _ := data["userId"].(float64)
-				response = handleGetUserTeams(uint(userID))
+				response = handleGetUserTeams(req)
 			}
 		}
 
 		// ? Send response
-		responseBody, _ := json.Marshal(response)
-		d.Ack(false)
+		body, _ := json.Marshal(response)
+		delivery.Ack(false)
 		common.RabbitMQChannel.Publish(
-			"",        // * exchange
-			d.ReplyTo, // * routing key
-			false,     // * mandatory
-			false,     // * immediate
+			"",               // * exchange
+			delivery.ReplyTo, // * routing key
+			false,            // * mandatory
+			false,            // * immediate
 			amqp.Publishing{
 				ContentType:   "application/json",
-				CorrelationId: d.CorrelationId,
-				Body:          responseBody,
+				CorrelationId: delivery.CorrelationId,
+				Body:          body,
 			},
 		)
 	}
 }
 
-func handleCreate(data map[string]interface{}) common.RPCResponse {
-	name, _ := data["name"].(string)
-	userID, _ := data["userId"].(float64)
-
-	if name == "" {
+// ---------------------------------------------------------------------
+// HANDLERS
+// ---------------------------------------------------------------------
+func handleCreate(req CreateTeamRequest) common.RPCResponse {
+	if req.Name == "" {
 		return common.RPCResponse{Success: false, Error: "Team name required", StatusCode: 400}
 	}
 
-	team := models.Team{Name: name}
+	team := models.Team{Name: req.Name}
 	if err := common.DB.Create(&team).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Failed to create team", StatusCode: 500}
 	}
 
-	// ? Add creator as owner
+	// Add creator as owner
 	member := models.TeamMember{
 		TeamID: team.ID,
-		UserID: uint(userID),
+		UserID: req.UserID,
 		Role:   "owner",
 	}
 	common.DB.Create(&member)
 
-	// ? Load members
 	common.DB.Preload("Members.User").First(&team, team.ID)
 
-	return common.RPCResponse{
-		Success: true,
-		Data:    team,
-	}
+	return toRPC(teamResponse{Success: true, Data: &team})
 }
 
 func handleGetAll() common.RPCResponse {
 	var teams []models.Team
 	common.DB.Preload("Members.User").Find(&teams)
-
-	return common.RPCResponse{
-		Success: true,
-		Data:    teams,
-	}
+	return toRPC(teamsListResponse{Success: true, Data: teams})
 }
 
-func handleGetByID(id uint) common.RPCResponse {
+func handleGetByID(req GetTeamByIDRequest) common.RPCResponse {
 	var team models.Team
-	if err := common.DB.Preload("Members.User").First(&team, id).Error; err != nil {
+	if err := common.DB.Preload("Members.User").First(&team, req.ID).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Team not found", StatusCode: 404}
 	}
-
-	return common.RPCResponse{
-		Success: true,
-		Data:    team,
-	}
+	return toRPC(teamResponse{Success: true, Data: &team})
 }
 
-func handleAddMember(data map[string]interface{}) common.RPCResponse {
-	teamID, _ := data["teamId"].(float64)
-	userID, _ := data["userId"].(float64)
-	role, _ := data["role"].(string)
+func handleAddMember(req AddMemberRequest) common.RPCResponse {
+	role := req.Role
 	if role == "" {
 		role = "member"
 	}
 
-	// ? Check if member already exists
 	var existing models.TeamMember
-	if err := common.DB.Where("team_id = ? AND user_id = ?", uint(teamID), uint(userID)).First(&existing).Error; err == nil {
+	if err := common.DB.Where("team_id = ? AND user_id = ?", req.TeamID, req.UserID).First(&existing).Error; err == nil {
 		return common.RPCResponse{Success: false, Error: "Member already exists", StatusCode: 409}
 	}
 
 	member := models.TeamMember{
-		TeamID: uint(teamID),
-		UserID: uint(userID),
+		TeamID: req.TeamID,
+		UserID: req.UserID,
 		Role:   role,
 	}
 	if err := common.DB.Create(&member).Error; err != nil {
@@ -219,55 +205,46 @@ func handleAddMember(data map[string]interface{}) common.RPCResponse {
 
 	common.DB.Preload("User").First(&member, member.ID)
 
-	// ? Publish event
 	common.PublishEvent(common.TeamMemberAdded, map[string]interface{}{
-		"teamId": teamID,
+		"teamId": req.TeamID,
 		"member": member,
 	})
 
-	return common.RPCResponse{
-		Success: true,
-		Data:    member,
-	}
+	return toRPC(memberResponse{Success: true, Data: &member})
 }
 
-func handleRemoveMember(data map[string]interface{}) common.RPCResponse {
-	teamID, _ := data["teamId"].(float64)
-	userID, _ := data["userId"].(float64)
-
+func handleRemoveMember(req RemoveMemberRequest) common.RPCResponse {
 	var member models.TeamMember
-	if err := common.DB.Where("team_id = ? AND user_id = ?", uint(teamID), uint(userID)).First(&member).Error; err != nil {
+	if err := common.DB.Where("team_id = ? AND user_id = ?", req.TeamID, req.UserID).First(&member).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Member not found", StatusCode: 404}
 	}
 
 	common.DB.Delete(&member)
 
-	// ? Publish event
 	common.PublishEvent(common.TeamMemberRemoved, map[string]interface{}{
-		"teamId": teamID,
-		"userId": userID,
+		"teamId": req.TeamID,
+		"userId": req.UserID,
 	})
 
-	return common.RPCResponse{Success: true}
+	return toRPC(successResponse{Success: true})
 }
 
-func handleGetUserTeams(userID uint) common.RPCResponse {
+func handleGetUserTeams(req GetUserTeamsRequest) common.RPCResponse {
 	var members []models.TeamMember
-	common.DB.Where("user_id = ?", userID).Preload("Team").Preload("User").Find(&members)
+	common.DB.Where("user_id = ?", req.UserID).
+		Preload("Team").
+		Preload("User").
+		Find(&members)
 
-	teams := make([]map[string]interface{}, len(members))
-	for i, member := range members {
-		teams[i] = map[string]interface{}{
-			"id":        member.Team.ID,
-			"name":      member.Team.Name,
-			"role":      member.Role,
-			"createdAt": member.Team.CreatedAt,
+	teams := make([]UserTeamSummary, len(members))
+	for i, m := range members {
+		teams[i] = UserTeamSummary{
+			ID:        m.Team.ID,
+			Name:      m.Team.Name,
+			Role:      m.Role,
+			CreatedAt: m.Team.CreatedAt,
 		}
 	}
 
-	return common.RPCResponse{
-		Success: true,
-		Data:    teams,
-	}
+	return toRPC(userTeamResponse{Success: true, Data: teams})
 }
-
