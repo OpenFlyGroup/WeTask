@@ -8,55 +8,6 @@ import (
 	"github.com/wetask/backend/pkg/common"
 )
 
-// BoardResponse represents board information
-// @Description Board information response
-type BoardResponse struct {
-	ID        uint   `json:"id" example:"1"`                           // Board ID
-	Name      string `json:"name" example:"Q1 Project"`                // Board name
-	TeamID    uint   `json:"teamId" example:"1"`                       // Team ID
-	CreatedAt string `json:"createdAt" example:"2024-01-01T00:00:00Z"` // Creation timestamp
-	UpdatedAt string `json:"updatedAt" example:"2024-01-01T00:00:00Z"` // Last update timestamp
-}
-
-// ColumnResponse represents column information
-// @Description Column information response
-type ColumnResponse struct {
-	ID        uint   `json:"id" example:"1"`                           // Column ID
-	Name      string `json:"name" example:"To Do"`                     // Column name
-	BoardID   uint   `json:"boardId" example:"1"`                      // Board ID
-	Position  int    `json:"position" example:"0"`                     // Column position in board
-	CreatedAt string `json:"createdAt" example:"2024-01-01T00:00:00Z"` // Creation timestamp
-	UpdatedAt string `json:"updatedAt" example:"2024-01-01T00:00:00Z"` // Last update timestamp
-}
-
-// CreateBoardRequest represents board creation request
-// @Description Board creation request
-type CreateBoardRequest struct {
-	Name   string `json:"name" example:"Q1 Project" binding:"required"` // Board name
-	TeamID uint   `json:"teamId" example:"1" binding:"required"`        // Team ID
-}
-
-// UpdateBoardRequest represents board update request
-// @Description Board update request
-type UpdateBoardRequest struct {
-	Name string `json:"name" example:"Q2 Project" binding:"required"` // Board name
-}
-
-// CreateColumnRequest represents column creation request
-// @Description Column creation request
-type CreateColumnRequest struct {
-	Name     string `json:"name" example:"To Do" binding:"required"` // Column name
-	BoardID  uint   `json:"boardId" example:"1" binding:"required"`  // Board ID
-	Position int    `json:"position" example:"0"`                    // Column position
-}
-
-// UpdateColumnRequest represents column update request
-// @Description Column update request
-type UpdateColumnRequest struct {
-	Name     string `json:"name" example:"In Progress"` // Column name
-	Position int    `json:"position" example:"1"`       // Column position
-}
-
 // handleGetBoards godoc
 // @Summary      Get all boards
 // @Description  Get a list of all boards for teams where the user is a member

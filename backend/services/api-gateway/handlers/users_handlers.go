@@ -8,23 +8,6 @@ import (
 	"github.com/wetask/backend/pkg/common"
 )
 
-// UserResponse represents user information
-// @Description User information response
-type UserResponse struct {
-	ID        uint   `json:"id" example:"1"`                           // User ID
-	Email     string `json:"email" example:"user@example.com"`         // User email
-	Name      string `json:"name" example:"John Doe"`                  // User name
-	CreatedAt string `json:"createdAt" example:"2024-01-01T00:00:00Z"` // Creation timestamp
-	UpdatedAt string `json:"updatedAt" example:"2024-01-01T00:00:00Z"` // Last update timestamp
-}
-
-// UpdateUserRequest represents user update request
-// @Description User update request
-type UpdateUserRequest struct {
-	Name  string `json:"name" example:"John Doe Updated"`      // Updated user name (optional)
-	Email string `json:"email" example:"newemail@example.com"` // Updated user email (optional)
-}
-
 // handleGetMe godoc
 // @Summary      Get current user
 // @Description  Get the authenticated user's information. User ID is extracted from JWT token.

@@ -8,61 +8,6 @@ import (
 	"github.com/wetask/backend/pkg/common"
 )
 
-// TaskResponse represents task information
-// @Description Task information response
-type TaskResponse struct {
-	ID          uint    `json:"id" example:"1"`                                   // Task ID
-	Title       string  `json:"title" example:"Implement feature"`                // Task title
-	Description *string `json:"description" example:"Add new feature to the app"` // Task description (optional)
-	Priority    *string `json:"priority" example:"high"`                          // Task priority: low, medium, high (optional)
-	ColumnID    uint    `json:"columnId" example:"1"`                             // Associated column ID
-	AssignedTo  *uint   `json:"assignedTo" example:"2"`                           // Assigned user ID (optional)
-	CreatedAt   string  `json:"createdAt" example:"2024-01-01T00:00:00Z"`         // Creation timestamp
-	UpdatedAt   string  `json:"updatedAt" example:"2024-01-01T00:00:00Z"`         // Last update timestamp
-}
-
-// CreateTaskRequest represents task creation request
-// @Description Task creation request
-type CreateTaskRequest struct {
-	Title       string `json:"title" example:"Implement feature" binding:"required"` // Task title
-	Description string `json:"description" example:"Add new feature to the app"`     // Task description (optional)
-	ColumnID    uint   `json:"columnId" example:"1" binding:"required"`              // Column ID
-	AssignedTo  *uint  `json:"assignedTo" example:"2"`                               // Assigned user ID (optional)
-	Priority    string `json:"priority" example:"high"`                              // Task priority: low, medium, high (optional)
-}
-
-// UpdateTaskRequest represents task update request
-// @Description Task update request
-type UpdateTaskRequest struct {
-	Title       string `json:"title" example:"Updated task title"`        // Updated task title (optional)
-	Description string `json:"description" example:"Updated description"` // Updated task description (optional)
-	Priority    string `json:"priority" example:"medium"`                 // Updated priority: low, medium, high (optional)
-	AssignedTo  *uint  `json:"assignedTo" example:"3"`                    // Updated assigned user ID (optional)
-}
-
-// MoveTaskRequest represents move task request
-// @Description Move task request
-type MoveTaskRequest struct {
-	ColumnID uint `json:"columnId" example:"2" binding:"required"` // Target column ID
-}
-
-// CommentResponse represents comment information
-// @Description Comment information response
-type CommentResponse struct {
-	ID        string `json:"id" example:"507f1f77bcf86cd799439011"`    // Comment ID
-	TaskID    uint   `json:"taskId" example:"1"`                       // Associated task ID
-	UserID    uint   `json:"userId" example:"1"`                       // Comment author user ID
-	Message   string `json:"message" example:"This looks good!"`       // Comment message
-	CreatedAt string `json:"createdAt" example:"2024-01-01T00:00:00Z"` // Creation timestamp
-	UpdatedAt string `json:"updatedAt" example:"2024-01-01T00:00:00Z"` // Last update timestamp
-}
-
-// AddCommentRequest represents add comment request
-// @Description Add comment request
-type AddCommentRequest struct {
-	Message string `json:"message" example:"This looks good!" binding:"required"` // Comment message
-}
-
 // handleCreateTask godoc
 // @Summary      Create a new task
 // @Description  Create a new task in a column. Title and columnId are required; other fields are optional.

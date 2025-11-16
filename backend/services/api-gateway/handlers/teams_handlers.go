@@ -8,28 +8,6 @@ import (
 	"github.com/wetask/backend/pkg/common"
 )
 
-// TeamResponse represents team information
-// @Description Team information response
-type TeamResponse struct {
-	ID        uint   `json:"id" example:"1"`                           // Team ID
-	Name      string `json:"name" example:"Development Team"`          // Team name
-	CreatedAt string `json:"createdAt" example:"2024-01-01T00:00:00Z"` // Creation timestamp
-	UpdatedAt string `json:"updatedAt" example:"2024-01-01T00:00:00Z"` // Last update timestamp
-}
-
-// CreateTeamRequest represents team creation request
-// @Description Team creation request
-type CreateTeamRequest struct {
-	Name string `json:"name" example:"Development Team" binding:"required"` // Team name
-}
-
-// AddTeamMemberRequest represents add team member request
-// @Description Add team member request
-type AddTeamMemberRequest struct {
-	UserID uint   `json:"userId" example:"2" binding:"required"` // User ID to add
-	Role   string `json:"role" example:"member"`                 // Member role (optional)
-}
-
 // handleGetTeams godoc
 // @Summary      Get all teams
 // @Description  Get a list of all teams accessible to the authenticated user

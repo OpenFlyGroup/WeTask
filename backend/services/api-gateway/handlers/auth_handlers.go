@@ -8,34 +8,6 @@ import (
 	"github.com/wetask/backend/pkg/common"
 )
 
-// RegisterRequest represents user registration request
-// @Description User registration request
-type RegisterRequest struct {
-	Email    string `json:"email" example:"user@example.com" binding:"required,email"` // User email address
-	Password string `json:"password" example:"password123" binding:"required,min=6"`   // User password (min 6 characters)
-	Name     string `json:"name" example:"John Doe" binding:"required"`                // User full name
-}
-
-// LoginRequest represents user login request
-// @Description User login request
-type LoginRequest struct {
-	Email    string `json:"email" example:"user@example.com" binding:"required,email"` // User email address
-	Password string `json:"password" example:"password123" binding:"required"`         // User password
-}
-
-// RefreshRequest represents token refresh request
-// @Description Token refresh request
-type RefreshRequest struct {
-	RefreshToken string `json:"refreshToken" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." binding:"required"` // Refresh token
-}
-
-// AuthResponse represents authentication response
-// @Description Authentication response with tokens
-type AuthResponse struct {
-	AccessToken  string `json:"accessToken" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`  // JWT access token
-	RefreshToken string `json:"refreshToken" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."` // JWT refresh token
-}
-
 func AuthMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authHeader := ctx.GetHeader("Authorization")
