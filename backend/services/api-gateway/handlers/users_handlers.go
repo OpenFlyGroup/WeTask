@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"net/http"
@@ -37,7 +37,7 @@ type UpdateUserRequest struct {
 // @Failure      404  {object}  ErrorResponse  "User not found"
 // @Failure      500  {object}  ErrorResponse  "Internal server error"
 // @Router       /users/me [get]
-func handleGetMe(ctx *gin.Context) {
+func HandleGetMe(ctx *gin.Context) {
 	userIDVal, _ := ctx.Get("userId")
 	userID := userIDVal.(uint)
 
@@ -72,7 +72,7 @@ func handleGetMe(ctx *gin.Context) {
 // @Failure      404  {object}  ErrorResponse "User not found"
 // @Failure      500  {object}  ErrorResponse "Internal server error"
 // @Router       /users/{id} [get]
-func handleGetUser(ctx *gin.Context) {
+func HandleGetUser(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
@@ -111,7 +111,7 @@ func handleGetUser(ctx *gin.Context) {
 // @Failure      404      {object}  ErrorResponse      "User not found"
 // @Failure      500      {object}  ErrorResponse      "Internal server error"
 // @Router       /users/{id} [patch]
-func handleUpdateUser(ctx *gin.Context) {
+func HandleUpdateUser(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})

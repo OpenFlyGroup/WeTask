@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"net/http"
@@ -77,7 +77,7 @@ type AddCommentRequest struct {
 // @Failure      404      {object}  ErrorResponse      "Column not found"
 // @Failure      500      {object}  ErrorResponse      "Internal server error"
 // @Router       /tasks [post]
-func handleCreateTask(ctx *gin.Context) {
+func HandleCreateTask(ctx *gin.Context) {
 	var req struct {
 		Title       string `json:"title" binding:"required"`
 		Description string `json:"description"`
@@ -133,7 +133,7 @@ func handleCreateTask(ctx *gin.Context) {
 // @Failure      404  {object}  ErrorResponse  "Task not found"
 // @Failure      500  {object}  ErrorResponse  "Internal server error"
 // @Router       /tasks/{id} [get]
-func handleGetTask(ctx *gin.Context) {
+func HandleGetTask(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
@@ -171,7 +171,7 @@ func handleGetTask(ctx *gin.Context) {
 // @Failure      404      {object}  ErrorResponse   "Board not found"
 // @Failure      500      {object}  ErrorResponse   "Internal server error"
 // @Router       /tasks/board/{boardId} [get]
-func handleGetTasksByBoard(ctx *gin.Context) {
+func HandleGetTasksByBoard(ctx *gin.Context) {
 	boardID, err := strconv.ParseUint(ctx.Param("boardId"), 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid board ID"})
@@ -210,7 +210,7 @@ func handleGetTasksByBoard(ctx *gin.Context) {
 // @Failure      404      {object}  ErrorResponse      "Task not found"
 // @Failure      500      {object}  ErrorResponse      "Internal server error"
 // @Router       /tasks/{id} [put]
-func handleUpdateTask(ctx *gin.Context) {
+func HandleUpdateTask(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
@@ -271,7 +271,7 @@ func handleUpdateTask(ctx *gin.Context) {
 // @Failure      404  {object}  ErrorResponse   "Task not found"
 // @Failure      500  {object}  ErrorResponse   "Internal server error"
 // @Router       /tasks/{id} [delete]
-func handleDeleteTask(ctx *gin.Context) {
+func HandleDeleteTask(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
@@ -310,7 +310,7 @@ func handleDeleteTask(ctx *gin.Context) {
 // @Failure      404      {object}  ErrorResponse    "Task or column not found"
 // @Failure      500      {object}  ErrorResponse    "Internal server error"
 // @Router       /tasks/{id}/move [put]
-func handleMoveTask(ctx *gin.Context) {
+func HandleMoveTask(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
@@ -359,7 +359,7 @@ func handleMoveTask(ctx *gin.Context) {
 // @Failure      404      {object}  ErrorResponse      "Task not found"
 // @Failure      500      {object}  ErrorResponse      "Internal server error"
 // @Router       /tasks/{id}/comment [post]
-func handleAddComment(ctx *gin.Context) {
+func HandleAddComment(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
@@ -411,7 +411,7 @@ func handleAddComment(ctx *gin.Context) {
 // @Failure      404  {object}  ErrorResponse     "Task not found"
 // @Failure      500  {object}  ErrorResponse     "Internal server error"
 // @Router       /tasks/{id}/comments [get]
-func handleGetComments(ctx *gin.Context) {
+func HandleGetComments(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})

@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"net/http"
@@ -36,7 +36,7 @@ type AuthResponse struct {
 	RefreshToken string `json:"refreshToken" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."` // JWT refresh token
 }
 
-func authMiddleware() gin.HandlerFunc {
+func AuthMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authHeader := ctx.GetHeader("Authorization")
 		if authHeader == "" {
@@ -94,7 +94,7 @@ func authMiddleware() gin.HandlerFunc {
 // @Failure      409      {object}  ErrorResponse    "User already exists"
 // @Failure      500      {object}  ErrorResponse    "Internal server error"
 // @Router       /auth/register [post]
-func handleRegister(ctx *gin.Context) {
+func HandleRegister(ctx *gin.Context) {
 	var req struct {
 		Email    string `json:"email" binding:"required,email"`
 		Password string `json:"password" binding:"required,min=6"`
@@ -137,7 +137,7 @@ func handleRegister(ctx *gin.Context) {
 // @Failure      401      {object}  ErrorResponse  "Invalid credentials"
 // @Failure      500      {object}  ErrorResponse  "Internal server error"
 // @Router       /auth/login [post]
-func handleLogin(ctx *gin.Context) {
+func HandleLogin(ctx *gin.Context) {
 	var req struct {
 		Email    string `json:"email" binding:"required,email"`
 		Password string `json:"password" binding:"required"`
@@ -178,7 +178,7 @@ func handleLogin(ctx *gin.Context) {
 // @Failure      401      {object}  ErrorResponse   "Invalid or expired refresh token"
 // @Failure      500      {object}  ErrorResponse   "Internal server error"
 // @Router       /auth/refresh [post]
-func handleRefresh(ctx *gin.Context) {
+func HandleRefresh(ctx *gin.Context) {
 	var req struct {
 		RefreshToken string `json:"refreshToken" binding:"required"`
 	}

@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"net/http"
@@ -68,7 +68,7 @@ type UpdateColumnRequest struct {
 // @Failure      401  {object}  ErrorResponse  "Unauthorized - invalid or missing token"
 // @Failure      500  {object}  ErrorResponse  "Internal server error"
 // @Router       /boards [get]
-func handleGetBoards(ctx *gin.Context) {
+func HandleGetBoards(ctx *gin.Context) {
 	response, err := common.CallRPC(common.BoardsGetAll, nil)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -97,7 +97,7 @@ func handleGetBoards(ctx *gin.Context) {
 // @Failure      404      {object}  ErrorResponse       "Team not found or user not a team member"
 // @Failure      500      {object}  ErrorResponse       "Internal server error"
 // @Router       /boards [post]
-func handleCreateBoard(ctx *gin.Context) {
+func HandleCreateBoard(ctx *gin.Context) {
 	userIDVal, _ := ctx.Get("userId")
 	userID := userIDVal.(uint)
 
@@ -140,7 +140,7 @@ func handleCreateBoard(ctx *gin.Context) {
 // @Failure      404  {object}  ErrorResponse "Board not found"
 // @Failure      500  {object}  ErrorResponse "Internal server error"
 // @Router       /boards/{id} [get]
-func handleGetBoard(ctx *gin.Context) {
+func HandleGetBoard(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid board ID"})
@@ -179,7 +179,7 @@ func handleGetBoard(ctx *gin.Context) {
 // @Failure      404      {object}  ErrorResponse       "Board not found"
 // @Failure      500      {object}  ErrorResponse       "Internal server error"
 // @Router       /boards/{id} [put]
-func handleUpdateBoard(ctx *gin.Context) {
+func HandleUpdateBoard(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid board ID"})
@@ -224,7 +224,7 @@ func handleUpdateBoard(ctx *gin.Context) {
 // @Failure      404  {object}  ErrorResponse   "Board not found"
 // @Failure      500  {object}  ErrorResponse   "Internal server error"
 // @Router       /boards/{id} [delete]
-func handleDeleteBoard(ctx *gin.Context) {
+func HandleDeleteBoard(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid board ID"})
@@ -262,7 +262,7 @@ func handleDeleteBoard(ctx *gin.Context) {
 // @Failure      404      {object}  ErrorResponse        "Board not found"
 // @Failure      500      {object}  ErrorResponse        "Internal server error"
 // @Router       /columns [post]
-func handleCreateColumn(ctx *gin.Context) {
+func HandleCreateColumn(ctx *gin.Context) {
 	var req CreateColumnRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -302,7 +302,7 @@ func handleCreateColumn(ctx *gin.Context) {
 // @Failure      404      {object}  ErrorResponse    "Board not found"
 // @Failure      500      {object}  ErrorResponse    "Internal server error"
 // @Router       /columns [get]
-func handleGetColumns(ctx *gin.Context) {
+func HandleGetColumns(ctx *gin.Context) {
 	boardIDStr := ctx.Query("boardId")
 	boardID, err := strconv.ParseUint(boardIDStr, 10, 32)
 	if err != nil {
@@ -342,7 +342,7 @@ func handleGetColumns(ctx *gin.Context) {
 // @Failure      404      {object}  ErrorResponse        "Column not found"
 // @Failure      500      {object}  ErrorResponse        "Internal server error"
 // @Router       /columns/{id} [put]
-func handleUpdateColumn(ctx *gin.Context) {
+func HandleUpdateColumn(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid column ID"})
@@ -388,7 +388,7 @@ func handleUpdateColumn(ctx *gin.Context) {
 // @Failure      404  {object}  ErrorResponse   "Column not found"
 // @Failure      500  {object}  ErrorResponse   "Internal server error"
 // @Router       /columns/{id} [delete]
-func handleDeleteColumn(ctx *gin.Context) {
+func HandleDeleteColumn(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid column ID"})

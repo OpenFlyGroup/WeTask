@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"net/http"
@@ -41,7 +41,7 @@ type AddTeamMemberRequest struct {
 // @Failure      401  {object}  ErrorResponse "Unauthorized - invalid or missing token"
 // @Failure      500  {object}  ErrorResponse "Internal server error"
 // @Router       /teams [get]
-func handleGetTeams(ctx *gin.Context) {
+func HandleGetTeams(ctx *gin.Context) {
 	response, err := common.CallRPC(common.TeamsGetAll, nil)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -69,7 +69,7 @@ func handleGetTeams(ctx *gin.Context) {
 // @Failure      401      {object}  ErrorResponse      "Unauthorized - invalid or missing token"
 // @Failure      500      {object}  ErrorResponse      "Internal server error"
 // @Router       /teams [post]
-func handleCreateTeam(ctx *gin.Context) {
+func HandleCreateTeam(ctx *gin.Context) {
 	userIDVal, _ := ctx.Get("userId")
 	userID := userIDVal.(uint)
 
@@ -114,7 +114,7 @@ func handleCreateTeam(ctx *gin.Context) {
 // @Failure      404  {object}  ErrorResponse "Team not found"
 // @Failure      500  {object}  ErrorResponse "Internal server error"
 // @Router       /teams/{id} [get]
-func handleGetTeam(ctx *gin.Context) {
+func HandleGetTeam(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid team ID"})
@@ -154,7 +154,7 @@ func handleGetTeam(ctx *gin.Context) {
 // @Failure      409      {object}  ErrorResponse         "User is already a member of the team"
 // @Failure      500      {object}  ErrorResponse         "Internal server error"
 // @Router       /teams/{id}/members [post]
-func handleAddTeamMember(ctx *gin.Context) {
+func HandleAddTeamMember(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid team ID"})
@@ -205,7 +205,7 @@ func handleAddTeamMember(ctx *gin.Context) {
 // @Failure      404     {object}  ErrorResponse   "Team or member not found"
 // @Failure      500     {object}  ErrorResponse   "Internal server error"
 // @Router       /teams/{id}/members/{userId} [delete]
-func handleRemoveTeamMember(ctx *gin.Context) {
+func HandleRemoveTeamMember(ctx *gin.Context) {
 	teamID, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid team ID"})
