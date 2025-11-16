@@ -21,7 +21,6 @@ func main() {
 	if err := common.InitPostgreSQL(); err != nil {
 		log.Fatal("Failed to initialize PostgreSQL:", err)
 	}
-	
 	// ? Migrate boards models
 	if err := common.MigrateBoardsModels(); err != nil {
 		log.Fatal("Failed to migrate database:", err)
@@ -46,7 +45,6 @@ func main() {
 		common.ColumnsUpdate,
 		common.ColumnsDelete,
 	}
-
 	for _, queue := range queues {
 		_, err := common.RabbitMQChannel.QueueDeclare(
 			queue, // * name
@@ -75,7 +73,6 @@ func main() {
 		if err != nil {
 			log.Fatal("Failed to register consumer:", err)
 		}
-
 		go handleMessages(queue, msgs)
 	}
 
@@ -83,83 +80,81 @@ func main() {
 	select {} // ? Keep running
 }
 
+// ? Handles incoming messages for each queue
 func handleMessages(queue string, msgs <-chan amqp.Delivery) {
 	for d := range msgs {
 		var response common.RPCResponse
 
 		switch queue {
 		case common.BoardsCreate:
-			var data map[string]any
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var req CreateBoardRequest
+			if err := json.Unmarshal(d.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				response = handleCreateBoard(data)
+				response = handleCreateBoard(req)
 			}
 		case common.BoardsGetAll:
-			var data map[string]any
-			json.Unmarshal(d.Body, &data)
-			userID, _ := data["userId"].(float64)
-			response = handleGetAllBoards(uint(userID))
-		case common.BoardsGetByID:
-			var data map[string]any
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var req GetAllBoardsRequest
+			if err := json.Unmarshal(d.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				id, _ := data["id"].(float64)
-				response = handleGetBoardByID(uint(id))
+				response = handleGetAllBoards(req)
+			}
+		case common.BoardsGetByID:
+			var req GetBoardByIDRequest
+			if err := json.Unmarshal(d.Body, &req); err != nil {
+				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
+			} else {
+				response = handleGetBoardByID(req)
 			}
 		case common.BoardsUpdate:
-			var data map[string]any
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var req UpdateBoardRequest
+			if err := json.Unmarshal(d.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				response = handleUpdateBoard(data)
+				response = handleUpdateBoard(req)
 			}
 		case common.BoardsDelete:
-			var data map[string]any
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var req DeleteBoardRequest
+			if err := json.Unmarshal(d.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				id, _ := data["id"].(float64)
-				response = handleDeleteBoard(uint(id))
+				response = handleDeleteBoard(req)
 			}
 		case common.BoardsGetByTeam:
-			var data map[string]any
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var req GetBoardsByTeamRequest
+			if err := json.Unmarshal(d.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				teamID, _ := data["teamId"].(float64)
-				response = handleGetBoardsByTeam(uint(teamID))
+				response = handleGetBoardsByTeam(req)
 			}
 		case common.ColumnsCreate:
-			var data map[string]any
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var req CreateColumnRequest
+			if err := json.Unmarshal(d.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				response = handleCreateColumn(data)
+				response = handleCreateColumn(req)
 			}
 		case common.ColumnsGetByBoard:
-			var data map[string]any
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var req GetColumnsByBoardRequest
+			if err := json.Unmarshal(d.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				boardID, _ := data["boardId"].(float64)
-				response = handleGetColumnsByBoard(uint(boardID))
+				response = handleGetColumnsByBoard(req)
 			}
 		case common.ColumnsUpdate:
-			var data map[string]any
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var req UpdateColumnRequest
+			if err := json.Unmarshal(d.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				response = handleUpdateColumn(data)
+				response = handleUpdateColumn(req)
 			}
 		case common.ColumnsDelete:
-			var data map[string]any
-			if err := json.Unmarshal(d.Body, &data); err != nil {
+			var req DeleteColumnRequest
+			if err := json.Unmarshal(d.Body, &req); err != nil {
 				response = common.RPCResponse{Success: false, Error: "Invalid payload", StatusCode: 400}
 			} else {
-				id, _ := data["id"].(float64)
-				response = handleDeleteColumn(uint(id))
+				response = handleDeleteColumn(req)
 			}
 		}
 
@@ -180,197 +175,145 @@ func handleMessages(queue string, msgs <-chan amqp.Delivery) {
 	}
 }
 
-func handleCreateBoard(data map[string]any) common.RPCResponse {
-	title, _ := data["title"].(string)
-	teamID, _ := data["teamId"].(float64)
-
-	if title == "" {
+// ? Handles board creation
+func handleCreateBoard(req CreateBoardRequest) common.RPCResponse {
+	if req.Title == "" {
 		return common.RPCResponse{Success: false, Error: "Board title required", StatusCode: 400}
 	}
-
-	board := models.Board{
-		Title:  title,
-		TeamID: uint(teamID),
-	}
+	board := models.Board{Title: req.Title, TeamID: req.TeamID}
 	if err := common.DB.Create(&board).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Failed to create board", StatusCode: 500}
 	}
-
 	common.DB.Preload("Team").First(&board, board.ID)
 
 	// ? Publish event
-	common.PublishEvent(common.BoardUpdated, map[string]any{
-		"teamId": teamID,
+	common.PublishEvent(common.BoardUpdated, map[string]interface{}{
+		"teamId": req.TeamID,
 		"board":  board,
 	})
 
-	return common.RPCResponse{
-		Success: true,
-		Data:    board,
-	}
+	return toRPC(boardResponse{Success: true, Data: &board})
 }
 
-func handleGetAllBoards(userID uint) common.RPCResponse {
-	// ? Get user's teams
+// ? Handles fetching all boards for a user
+func handleGetAllBoards(req GetAllBoardsRequest) common.RPCResponse {
 	var members []models.TeamMember
-	common.DB.Where("user_id = ?", userID).Find(&members)
+	common.DB.Where("user_id = ?", req.UserID).Find(&members)
 
 	teamIDs := make([]uint, len(members))
-	for i, m := range members {
-		teamIDs[i] = m.TeamID
+	for i, member := range members {
+		teamIDs[i] = member.TeamID
 	}
 
 	var boards []models.Board
-	common.DB.Where("team_id IN ?", teamIDs).Preload("Team").Preload("Columns").Find(&boards)
+	common.DB.Where("team_id IN ?", teamIDs).
+		Preload("Team").Preload("Columns").
+		Find(&boards)
 
-	return common.RPCResponse{
-		Success: true,
-		Data:    boards,
-	}
+	return toRPC(boardsListResponse{Success: true, Data: boards})
 }
 
-func handleGetBoardByID(id uint) common.RPCResponse {
+// ? Handles fetching a board by ID
+func handleGetBoardByID(req GetBoardByIDRequest) common.RPCResponse {
 	var board models.Board
-	if err := common.DB.Preload("Team").Preload("Columns").First(&board, id).Error; err != nil {
+	if err := common.DB.Preload("Team").Preload("Columns").First(&board, req.ID).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Board not found", StatusCode: 404}
 	}
-
-	return common.RPCResponse{
-		Success: true,
-		Data:    board,
-	}
+	return toRPC(boardResponse{Success: true, Data: &board})
 }
 
-func handleUpdateBoard(data map[string]any) common.RPCResponse {
-	id, _ := data["id"].(float64)
-	title, _ := data["title"].(string)
-
+// ? Handles board update
+func handleUpdateBoard(req UpdateBoardRequest) common.RPCResponse {
 	var board models.Board
-	if err := common.DB.First(&board, uint(id)).Error; err != nil {
+	if err := common.DB.First(&board, req.ID).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Board not found", StatusCode: 404}
 	}
-
-	if title != "" {
-		board.Title = title
+	if req.Title != nil {
+		board.Title = *req.Title
 	}
-
 	if err := common.DB.Save(&board).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Failed to update board", StatusCode: 500}
 	}
-
 	common.DB.Preload("Team").First(&board, board.ID)
 
 	// ? Publish event
-	common.PublishEvent(common.BoardUpdated, map[string]any{
+	common.PublishEvent(common.BoardUpdated, map[string]interface{}{
 		"teamId": board.TeamID,
 		"board":  board,
 	})
 
-	return common.RPCResponse{
-		Success: true,
-		Data:    board,
-	}
+	return toRPC(boardResponse{Success: true, Data: &board})
 }
 
-func handleDeleteBoard(id uint) common.RPCResponse {
+// ? Handles board deletion
+func handleDeleteBoard(req DeleteBoardRequest) common.RPCResponse {
 	var board models.Board
-	if err := common.DB.First(&board, id).Error; err != nil {
+	if err := common.DB.First(&board, req.ID).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Board not found", StatusCode: 404}
 	}
-
 	teamID := board.TeamID
 	common.DB.Delete(&board)
 
 	// ? Publish event
-	common.PublishEvent(common.BoardUpdated, map[string]any{
+	common.PublishEvent(common.BoardUpdated, map[string]interface{}{
 		"teamId": teamID,
 		"board":  nil,
 	})
 
-	return common.RPCResponse{Success: true}
+	return toRPC(successResponse{Success: true})
 }
 
-func handleGetBoardsByTeam(teamID uint) common.RPCResponse {
+// ? Handles fetching boards by team
+func handleGetBoardsByTeam(req GetBoardsByTeamRequest) common.RPCResponse {
 	var boards []models.Board
-	common.DB.Where("team_id = ?", teamID).Preload("Columns").Find(&boards)
-
-	return common.RPCResponse{
-		Success: true,
-		Data:    boards,
-	}
+	common.DB.Where("team_id = ?", req.TeamID).Preload("Columns").Find(&boards)
+	return toRPC(boardsListResponse{Success: true, Data: boards})
 }
 
-func handleCreateColumn(data map[string]any) common.RPCResponse {
-	title, _ := data["title"].(string)
-	boardID, _ := data["boardId"].(float64)
-	order, _ := data["order"].(float64)
-
-	if title == "" {
+// ? Handles column creation
+func handleCreateColumn(req CreateColumnRequest) common.RPCResponse {
+	if req.Title == "" {
 		return common.RPCResponse{Success: false, Error: "Column title required", StatusCode: 400}
 	}
-
-	column := models.Column{
-		Title:   title,
-		BoardID: uint(boardID),
-		Order:   int(order),
-	}
+	column := models.Column{Title: req.Title, BoardID: req.BoardID, Order: req.Order}
 	if err := common.DB.Create(&column).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Failed to create column", StatusCode: 500}
 	}
-
 	common.DB.Preload("Board").First(&column, column.ID)
-
-	return common.RPCResponse{
-		Success: true,
-		Data:    column,
-	}
+	return toRPC(columnResponse{Success: true, Data: &column})
 }
 
-func handleGetColumnsByBoard(boardID uint) common.RPCResponse {
+// ? Handles fetching columns by board
+func handleGetColumnsByBoard(req GetColumnsByBoardRequest) common.RPCResponse {
 	var columns []models.Column
-	common.DB.Where("board_id = ?", boardID).Order("\"order\" ASC").Find(&columns)
-
-	return common.RPCResponse{
-		Success: true,
-		Data:    columns,
-	}
+	common.DB.Where("board_id = ?", req.BoardID).Order("\"order\" ASC").Find(&columns)
+	return toRPC(columnsListResponse{Success: true, Data: columns})
 }
 
-func handleUpdateColumn(data map[string]any) common.RPCResponse {
-	id, _ := data["id"].(float64)
-	title, _ := data["title"].(string)
-	order, ok := data["order"].(float64)
-
+// ? Handles column update
+func handleUpdateColumn(req UpdateColumnRequest) common.RPCResponse {
 	var column models.Column
-	if err := common.DB.First(&column, uint(id)).Error; err != nil {
+	if err := common.DB.First(&column, req.ID).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Column not found", StatusCode: 404}
 	}
-
-	if title != "" {
-		column.Title = title
+	if req.Title != nil {
+		column.Title = *req.Title
 	}
-	if ok {
-		column.Order = int(order)
+	if req.Order != nil {
+		column.Order = *req.Order
 	}
-
 	if err := common.DB.Save(&column).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Failed to update column", StatusCode: 500}
 	}
-
-	return common.RPCResponse{
-		Success: true,
-		Data:    column,
-	}
+	return toRPC(columnResponse{Success: true, Data: &column})
 }
 
-func handleDeleteColumn(id uint) common.RPCResponse {
+// ? Handles column deletion
+func handleDeleteColumn(req DeleteColumnRequest) common.RPCResponse {
 	var column models.Column
-	if err := common.DB.First(&column, id).Error; err != nil {
+	if err := common.DB.First(&column, req.ID).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Column not found", StatusCode: 404}
 	}
-
 	common.DB.Delete(&column)
-
-	return common.RPCResponse{Success: true}
+	return toRPC(successResponse{Success: true})
 }
-

@@ -13,6 +13,7 @@ import (
 
 	"github.com/wetask/backend/pkg/common"
 	_ "github.com/wetask/backend/services/api-gateway/docs"
+	"github.com/wetask/backend/services/api-gateway/handlers"
 )
 
 // @title           WeTask API Gateway
@@ -123,63 +124,63 @@ func main() {
 		// ? Auth routes (public)
 		auth := api.Group("/auth")
 		{
-			auth.POST("/register", handleRegister)
-			auth.POST("/login", handleLogin)
-			auth.POST("/refresh", handleRefresh)
+			auth.POST("/register", handlers.HandleRegister)
+			auth.POST("/login", handlers.HandleLogin)
+			auth.POST("/refresh", handlers.HandleRefresh)
 		}
 
 		// ? Protected routes
 		protected := api.Group("")
-		protected.Use(authMiddleware())
+		protected.Use(handlers.AuthMiddleware())
 		{
 			// ? Users
 			users := protected.Group("/users")
 			{
-				users.GET("/me", handleGetMe)
-				users.GET("/:id", handleGetUser)
-				users.PATCH("/:id", handleUpdateUser)
+				users.GET("/me", handlers.HandleGetMe)
+				users.GET(":id", handlers.HandleGetUser)
+				users.PATCH(":id", handlers.HandleUpdateUser)
 			}
 
 			// ? Teams
 			teams := protected.Group("/teams")
 			{
-				teams.GET("", handleGetTeams)
-				teams.POST("", handleCreateTeam)
-				teams.GET("/:id", handleGetTeam)
-				teams.POST("/:id/members", handleAddTeamMember)
-				teams.DELETE("/:id/members/:userId", handleRemoveTeamMember)
+				teams.GET("", handlers.HandleGetTeams)
+				teams.POST("", handlers.HandleCreateTeam)
+				teams.GET(":id", handlers.HandleGetTeam)
+				teams.POST(":id/members", handlers.HandleAddTeamMember)
+				teams.DELETE(":id/members/:userId", handlers.HandleRemoveTeamMember)
 			}
 
 			// ? Boards
 			boards := protected.Group("/boards")
 			{
-				boards.GET("", handleGetBoards)
-				boards.POST("", handleCreateBoard)
-				boards.GET("/:id", handleGetBoard)
-				boards.PUT("/:id", handleUpdateBoard)
-				boards.DELETE("/:id", handleDeleteBoard)
+				boards.GET("", handlers.HandleGetBoards)
+				boards.POST("", handlers.HandleCreateBoard)
+				boards.GET(":id", handlers.HandleGetBoard)
+				boards.PUT(":id", handlers.HandleUpdateBoard)
+				boards.DELETE(":id", handlers.HandleDeleteBoard)
 			}
 
 			// ? Columns
 			columns := protected.Group("/columns")
 			{
-				columns.POST("", handleCreateColumn)
-				columns.GET("/board/:boardId", handleGetColumns)
-				columns.PUT("/:id", handleUpdateColumn)
-				columns.DELETE("/:id", handleDeleteColumn)
+				columns.POST("", handlers.HandleCreateColumn)
+				columns.GET("/board/:boardId", handlers.HandleGetColumns)
+				columns.PUT(":id", handlers.HandleUpdateColumn)
+				columns.DELETE(":id", handlers.HandleDeleteColumn)
 			}
 
 			// ? Tasks
 			tasks := protected.Group("/tasks")
 			{
-				tasks.POST("", handleCreateTask)
-				tasks.GET("/:id", handleGetTask)
-				tasks.GET("/board/:boardId", handleGetTasksByBoard)
-				tasks.PUT("/:id", handleUpdateTask)
-				tasks.DELETE("/:id", handleDeleteTask)
-				tasks.PUT("/:id/move", handleMoveTask)
-				tasks.POST("/:id/comment", handleAddComment)
-				tasks.GET("/:id/comments", handleGetComments)
+				tasks.POST("", handlers.HandleCreateTask)
+				tasks.GET(":id", handlers.HandleGetTask)
+				tasks.GET("/board/:boardId", handlers.HandleGetTasksByBoard)
+				tasks.PUT(":id", handlers.HandleUpdateTask)
+				tasks.DELETE(":id", handlers.HandleDeleteTask)
+				tasks.PUT(":id/move", handlers.HandleMoveTask)
+				tasks.POST(":id/comment", handlers.HandleAddComment)
+				tasks.GET(":id/comments", handlers.HandleGetComments)
 			}
 		}
 	}

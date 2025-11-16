@@ -1,7 +1,7 @@
 .PHONY: build run clean test docker-up docker-down
 
 
-#?  Build all back services
+# ? Build all back services
 build:
 	@echo "Building services..."
 	@go build -o bin/api-gateway ./services/api-gateway
@@ -13,7 +13,7 @@ build:
 	@echo "Build complete!"
 
 
-#?  Run back services locally
+# ? Run back services locally
 run-gateway:
 	@go run services/api-gateway/*.go
 
@@ -33,13 +33,13 @@ run-tasks:
 	@go run services/tasks-service/main.go
 
 
-#?  Clean build artifacts
+# ? Clean build artifacts
 clean:
 	@rm -rf bin/
 	@echo "Cleaned!"
 
 
-#?  Docker commands
+# ? Docker commands
 docker-up:
 	@docker-compose up -d
 
@@ -50,23 +50,23 @@ docker-logs:
 	@docker-compose logs -f
 
 
-#?  Install dependencies
+# ? Install dependencies
 deps:
 	@go mod download
 	@go mod tidy
 
 
-#?  Format code
+# ? Format code
 fmt:
 	@go fmt ./...
 
 
-#?  Run tests
+# ? Run tests
 test:
 	@go test ./...
 
 
-#?  Generate Swagger documentation
+# ? Generate Swagger documentation
 swagger:
 	@echo "Generating Swagger documentation..."
 	@go install github.com/swaggo/swag/cmd/swag@latest
