@@ -27,14 +27,14 @@ function BoardsPage() {
     queryKey: ['me'],
     queryFn: () => UsersService.getMe(),
   })
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
+  const [title, setTitle] = useState<string>('')
+  const [teamId, setTeamId] = useState<number>()
 
   const createMut = useMutation({
-    mutationFn: () => BoardsService.createBoard({ name, description }),
+    mutationFn: () => BoardsService.createBoard({ title, teamId }),
     onSuccess: () => {
-      setName('')
-      setDescription('')
+      setTitle('')
+      setTeamId(undefined)
       void qc.invalidateQueries({ queryKey: ['boards'] })
     },
   })
@@ -88,20 +88,21 @@ function BoardsPage() {
               <input
                 className="input input-bordered"
                 placeholder="Board name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
                 required
               />
             </label>
             <label className="form-control md:col-span-2">
               <div className="label">
-                <span className="label-text">Description</span>
+                <span className="label-text">TeamId</span>
               </div>
               <input
                 className="input input-bordered"
-                placeholder="Description (optional)"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                placeholder="TeamId"
+                value={teamId}
+                required
+                onChange={(e) => setTeamId(Number(e.target.value))}
               />
             </label>
           </div>

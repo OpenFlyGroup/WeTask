@@ -6,9 +6,8 @@ export interface Board {
 }
 
 export interface CreateBoardDto {
-  name: string
-  description?: string
-  teamId?: number | null
+  title: string
+  teamId: number | undefined
 }
 
 export type UpdateBoardDto = Partial<CreateBoardDto>
