@@ -47,7 +47,7 @@ function BoardDetailPage() {
     return map
   }, [tasksQ.data])
 
-  const [newColumn, setNewColumn] = useState('')
+  const [newColumn, setNewColumn] = useState<string>('')
   const createColMut = useMutation({
     mutationFn: () =>
       ColumnsService.createColumn({ name: newColumn, boardId: id }),

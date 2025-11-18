@@ -13,7 +13,7 @@ function ProfilePage() {
     queryKey: ['me'],
     queryFn: () => UsersService.getMe(),
   })
-  const [name, setName] = useState('')
+  const [name, setName] = useState<string>('')
   useEffect(() => {
     if (data?.name) setName(data.name)
   }, [data])
