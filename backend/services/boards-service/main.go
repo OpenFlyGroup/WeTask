@@ -80,7 +80,6 @@ func main() {
 	select {} // ? Keep running
 }
 
-// ? Handles incoming messages for each queue
 func handleMessages(queue string, msgs <-chan amqp.Delivery) {
 	for d := range msgs {
 		var response common.RPCResponse
@@ -175,18 +174,48 @@ func handleMessages(queue string, msgs <-chan amqp.Delivery) {
 	}
 }
 
-// ? Handles board creation
 func handleCreateBoard(req CreateBoardRequest) common.RPCResponse {
 	if req.Title == "" {
 		return common.RPCResponse{Success: false, Error: "Board title required", StatusCode: 400}
 	}
+	// ? Validate team exists
+	var team models.Team
+	if req.UserID == 0 {
+		return common.RPCResponse{Success: false, Error: "User ID required", StatusCode: 400}
+	}
+
+	rpcResp, err := common.CallRPC(common.TeamsGetByID, map[string]interface{}{"id": req.TeamID})
+	if err != nil || rpcResp == nil || !rpcResp.Success {
+		return common.RPCResponse{Success: false, Error: "Team not found", StatusCode: 404}
+	}
+
+	if dataBytes, marshalErr := json.Marshal(rpcResp.Data); marshalErr == nil {
+		_ = json.Unmarshal(dataBytes, &team)
+	}
+
+	isMember := false
+	for _, m := range team.Members {
+		if m.UserID == req.UserID {
+			isMember = true
+			break
+		}
+	}
+	if !isMember {
+		return common.RPCResponse{Success: false, Error: "User is not a team member", StatusCode: 403}
+	}
+
 	board := models.Board{Title: req.Title, TeamID: req.TeamID}
 	if err := common.DB.Create(&board).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Failed to create board", StatusCode: 500}
 	}
-	common.DB.Preload("Team").First(&board, board.ID)
+	if rpcResp, rpcErr := common.CallRPC(common.TeamsGetByID, map[string]interface{}{"id": board.TeamID}); rpcErr == nil && rpcResp != nil && rpcResp.Success {
+		var team models.Team
+		if b, err := json.Marshal(rpcResp.Data); err == nil {
+			_ = json.Unmarshal(b, &team)
+			board.Team = team
+		}
+	}
 
-	// ? Publish event
 	common.PublishEvent(common.BoardUpdated, map[string]interface{}{
 		"teamId": req.TeamID,
 		"board":  board,
@@ -195,34 +224,79 @@ func handleCreateBoard(req CreateBoardRequest) common.RPCResponse {
 	return toRPC(boardResponse{Success: true, Data: &board})
 }
 
-// ? Handles fetching all boards for a user
 func handleGetAllBoards(req GetAllBoardsRequest) common.RPCResponse {
-	var members []models.TeamMember
-	common.DB.Where("user_id = ?", req.UserID).Find(&members)
+	rpcResp, rpcErr := common.CallRPC(common.TeamsGetUserTeams, map[string]interface{}{"userId": req.UserID})
+	if rpcErr != nil {
+		return common.RPCResponse{Success: false, Error: "Failed to fetch user teams", StatusCode: 500}
+	}
+	if rpcResp == nil || !rpcResp.Success {
+		return toRPC(boardsListResponse{Success: true, Data: []models.Board{}})
+	}
 
-	teamIDs := make([]uint, len(members))
-	for i, member := range members {
-		teamIDs[i] = member.TeamID
+	var rawTeams []map[string]interface{}
+	if b, err := json.Marshal(rpcResp.Data); err == nil {
+		_ = json.Unmarshal(b, &rawTeams)
+	}
+
+	teamIDs := make([]uint, 0, len(rawTeams))
+	for _, team := range rawTeams {
+		if idv, ok := team["id"]; ok {
+			switch v := idv.(type) {
+			case float64:
+				teamIDs = append(teamIDs, uint(v))
+			case int:
+				teamIDs = append(teamIDs, uint(v))
+			case uint:
+				teamIDs = append(teamIDs, v)
+			}
+		}
+	}
+
+	if len(teamIDs) == 0 {
+		return toRPC(boardsListResponse{Success: true, Data: []models.Board{}})
 	}
 
 	var boards []models.Board
 	common.DB.Where("team_id IN ?", teamIDs).
-		Preload("Team").Preload("Columns").
+		Preload("Columns").
 		Find(&boards)
+
+	// ? Attach team details to each board
+	teamCache := make(map[uint]models.Team)
+	for i := range boards {
+		tid := boards[i].TeamID
+		if team, ok := teamCache[tid]; ok {
+			boards[i].Team = team
+			continue
+		}
+		if rpcResp, rpcErr := common.CallRPC(common.TeamsGetByID, map[string]interface{}{"id": tid}); rpcErr == nil && rpcResp != nil && rpcResp.Success {
+			var team models.Team
+			if b, err := json.Marshal(rpcResp.Data); err == nil {
+				_ = json.Unmarshal(b, &team)
+				boards[i].Team = team
+				teamCache[tid] = team
+			}
+		}
+	}
 
 	return toRPC(boardsListResponse{Success: true, Data: boards})
 }
 
-// ? Handles fetching a board by ID
 func handleGetBoardByID(req GetBoardByIDRequest) common.RPCResponse {
 	var board models.Board
-	if err := common.DB.Preload("Team").Preload("Columns").First(&board, req.ID).Error; err != nil {
+	if err := common.DB.Preload("Columns").First(&board, req.ID).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Board not found", StatusCode: 404}
+	}
+	if rpcResp, rpcErr := common.CallRPC(common.TeamsGetByID, map[string]interface{}{"id": board.TeamID}); rpcErr == nil && rpcResp != nil && rpcResp.Success {
+		var team models.Team
+		if b, err := json.Marshal(rpcResp.Data); err == nil {
+			_ = json.Unmarshal(b, &team)
+			board.Team = team
+		}
 	}
 	return toRPC(boardResponse{Success: true, Data: &board})
 }
 
-// ? Handles board update
 func handleUpdateBoard(req UpdateBoardRequest) common.RPCResponse {
 	var board models.Board
 	if err := common.DB.First(&board, req.ID).Error; err != nil {
@@ -234,9 +308,14 @@ func handleUpdateBoard(req UpdateBoardRequest) common.RPCResponse {
 	if err := common.DB.Save(&board).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Failed to update board", StatusCode: 500}
 	}
-	common.DB.Preload("Team").First(&board, board.ID)
+	if rpcResp, rpcErr := common.CallRPC(common.TeamsGetByID, map[string]interface{}{"id": board.TeamID}); rpcErr == nil && rpcResp != nil && rpcResp.Success {
+		var team models.Team
+		if b, err := json.Marshal(rpcResp.Data); err == nil {
+			_ = json.Unmarshal(b, &team)
+			board.Team = team
+		}
+	}
 
-	// ? Publish event
 	common.PublishEvent(common.BoardUpdated, map[string]interface{}{
 		"teamId": board.TeamID,
 		"board":  board,
@@ -245,7 +324,6 @@ func handleUpdateBoard(req UpdateBoardRequest) common.RPCResponse {
 	return toRPC(boardResponse{Success: true, Data: &board})
 }
 
-// ? Handles board deletion
 func handleDeleteBoard(req DeleteBoardRequest) common.RPCResponse {
 	var board models.Board
 	if err := common.DB.First(&board, req.ID).Error; err != nil {
@@ -254,7 +332,6 @@ func handleDeleteBoard(req DeleteBoardRequest) common.RPCResponse {
 	teamID := board.TeamID
 	common.DB.Delete(&board)
 
-	// ? Publish event
 	common.PublishEvent(common.BoardUpdated, map[string]interface{}{
 		"teamId": teamID,
 		"board":  nil,
@@ -263,14 +340,12 @@ func handleDeleteBoard(req DeleteBoardRequest) common.RPCResponse {
 	return toRPC(successResponse{Success: true})
 }
 
-// ? Handles fetching boards by team
 func handleGetBoardsByTeam(req GetBoardsByTeamRequest) common.RPCResponse {
 	var boards []models.Board
 	common.DB.Where("team_id = ?", req.TeamID).Preload("Columns").Find(&boards)
 	return toRPC(boardsListResponse{Success: true, Data: boards})
 }
 
-// ? Handles column creation
 func handleCreateColumn(req CreateColumnRequest) common.RPCResponse {
 	if req.Title == "" {
 		return common.RPCResponse{Success: false, Error: "Column title required", StatusCode: 400}
@@ -283,14 +358,12 @@ func handleCreateColumn(req CreateColumnRequest) common.RPCResponse {
 	return toRPC(columnResponse{Success: true, Data: &column})
 }
 
-// ? Handles fetching columns by board
 func handleGetColumnsByBoard(req GetColumnsByBoardRequest) common.RPCResponse {
 	var columns []models.Column
 	common.DB.Where("board_id = ?", req.BoardID).Order("\"order\" ASC").Find(&columns)
 	return toRPC(columnsListResponse{Success: true, Data: columns})
 }
 
-// ? Handles column update
 func handleUpdateColumn(req UpdateColumnRequest) common.RPCResponse {
 	var column models.Column
 	if err := common.DB.First(&column, req.ID).Error; err != nil {
@@ -308,7 +381,6 @@ func handleUpdateColumn(req UpdateColumnRequest) common.RPCResponse {
 	return toRPC(columnResponse{Success: true, Data: &column})
 }
 
-// ? Handles column deletion
 func handleDeleteColumn(req DeleteColumnRequest) common.RPCResponse {
 	var column models.Column
 	if err := common.DB.First(&column, req.ID).Error; err != nil {

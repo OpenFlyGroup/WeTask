@@ -48,4 +48,3 @@ func InitMongoDB() error {
 	log.Println("MongoDB connected successfully")
 	return nil
 }
-

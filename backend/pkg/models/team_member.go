@@ -10,6 +10,6 @@ type TeamMember struct {
 	UserID    uint           `json:"userId" gorm:"not null;index;uniqueIndex:idx_team_user"`
 	Role      string         `json:"role" gorm:"default:'member'"` //? owner, admin, member
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
-	Team      Team           `json:"team,omitempty" gorm:"foreignKey:TeamID;constraint:OnDelete:CASCADE"`
-	User      User           `json:"user,omitempty" gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	Team      Team           `json:"-" gorm:"foreignKey:TeamID;constraint:OnDelete:CASCADE"`
+	User      User           `json:"user,omitempty" gorm:"-"`
 }

@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// ? ActivityLog is stored in MongoDB
+// ? stored in MongoDB
 type ActivityLog struct {
 	ID        string    `json:"id" bson:"_id,omitempty"`
 	TaskID    *uint     `json:"taskId,omitempty" bson:"taskId,omitempty"`
