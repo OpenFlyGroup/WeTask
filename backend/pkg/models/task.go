@@ -18,5 +18,5 @@ type Task struct {
 	UpdatedAt   time.Time      `json:"updatedAt"`
 	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
 	Column      Column         `json:"column,omitempty" gorm:"foreignKey:ColumnID;constraint:OnDelete:CASCADE"`
-	User        *User          `json:"user,omitempty" gorm:"foreignKey:AssignedTo;constraint:OnDelete:SET NULL"`
+	User        *User          `json:"user,omitempty" gorm:"-"`
 }

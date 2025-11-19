@@ -13,5 +13,5 @@ type RefreshToken struct {
 	ExpiresAt time.Time      `json:"expiresAt" gorm:"not null"`
 	CreatedAt time.Time      `json:"createdAt"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
-	User AuthUser `json:"-" gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	User      AuthUser       `json:"-" gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
 }

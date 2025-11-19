@@ -24,7 +24,7 @@ func HandleGetMe(ctx *gin.Context) {
 	userIDVal, _ := ctx.Get("userId")
 	userID := userIDVal.(uint)
 
-	response, err := common.CallRPC(common.UsersGetMe, map[string]interface{}{
+	response, err := common.CallRPC(common.UsersGetMe, map[string]any{
 		"userId": userID,
 	})
 
@@ -62,7 +62,7 @@ func HandleGetUser(ctx *gin.Context) {
 		return
 	}
 
-	response, err := common.CallRPC(common.UsersGetByID, map[string]interface{}{
+	response, err := common.CallRPC(common.UsersGetByID, map[string]any{
 		"id": uint(id),
 	})
 
@@ -111,7 +111,7 @@ func HandleUpdateUser(ctx *gin.Context) {
 		return
 	}
 
-	data := map[string]interface{}{"id": uint(id)}
+	data := map[string]any{"id": uint(id)}
 	if req.Name != "" {
 		data["name"] = req.Name
 	}

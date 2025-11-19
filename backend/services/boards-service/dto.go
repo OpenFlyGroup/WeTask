@@ -12,6 +12,7 @@ import (
 type CreateBoardRequest struct {
 	Title  string `json:"title"`
 	TeamID uint   `json:"teamId"`
+	UserID uint   `json:"userId,omitempty"`
 }
 
 type GetAllBoardsRequest struct {

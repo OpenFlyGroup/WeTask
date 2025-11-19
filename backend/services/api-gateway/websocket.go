@@ -36,15 +36,15 @@ func NewHub() *Hub {
 }
 
 func (h *Hub) Run() {
-	// Subscribe to RabbitMQ events
+	// ? Subscribe to RabbitMQ events
 	msgs, err := common.RabbitMQChannel.Consume(
-		"events_queue", // queue
-		"",             // consumer
-		true,           // auto-ack
-		false,          // exclusive
-		false,          // no-local
-		false,          // no-wait
-		nil,            // args
+		"events_queue", // * queue
+		"",             // * consumer
+		true,           // * auto-ack
+		false,          // * exclusive
+		false,          // * no-local
+		false,          // * no-wait
+		nil,            // * args
 	)
 	if err != nil {
 		log.Println("Failed to consume events:", err)
@@ -53,12 +53,12 @@ func (h *Hub) Run() {
 
 	go func() {
 		for msg := range msgs {
-			var eventData map[string]interface{}
+			var eventData map[string]any
 			if err := json.Unmarshal(msg.Body, &eventData); err != nil {
 				continue
 			}
 
-			// Broadcast to appropriate rooms
+			// ? Broadcast to appropriate rooms
 			eventType := msg.RoutingKey
 			h.broadcastToRoom(eventType, eventData)
 		}
@@ -86,7 +86,7 @@ func (h *Hub) Run() {
 	}
 }
 
-func (h *Hub) broadcastToRoom(eventType string, data map[string]interface{}) {
+func (h *Hub) broadcastToRoom(eventType string, data map[string]any) {
 	var room string
 	switch eventType {
 	case common.TaskCreated, common.TaskUpdated, common.TaskDeleted:
@@ -107,7 +107,7 @@ func (h *Hub) broadcastToRoom(eventType string, data map[string]interface{}) {
 		return
 	}
 
-	event := map[string]interface{}{
+	event := map[string]any{
 		"type": eventType,
 		"data": data,
 	}
@@ -161,13 +161,13 @@ func (c *Client) readPump() {
 			break
 		}
 
-		var msg map[string]interface{}
+		var msg map[string]any
 		if err := json.Unmarshal(message, &msg); err != nil {
 			continue
 		}
 
 		eventType, _ := msg["type"].(string)
-		data, _ := msg["data"].(map[string]interface{})
+		data, _ := msg["data"].(map[string]any)
 
 		switch eventType {
 		case "join:board":

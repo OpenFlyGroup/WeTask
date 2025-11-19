@@ -36,7 +36,7 @@ func HandleCreateTask(ctx *gin.Context) {
 		return
 	}
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"title":    req.Title,
 		"columnId": req.ColumnID,
 	}
@@ -85,7 +85,7 @@ func HandleGetTask(ctx *gin.Context) {
 		return
 	}
 
-	response, err := common.CallRPC(common.TasksGetByID, map[string]interface{}{
+	response, err := common.CallRPC(common.TasksGetByID, map[string]any{
 		"id": uint(id),
 	})
 
@@ -123,7 +123,7 @@ func HandleGetTasksByBoard(ctx *gin.Context) {
 		return
 	}
 
-	response, err := common.CallRPC(common.TasksGetByBoard, map[string]interface{}{
+	response, err := common.CallRPC(common.TasksGetByBoard, map[string]any{
 		"boardId": uint(boardID),
 	})
 
@@ -174,7 +174,7 @@ func HandleUpdateTask(ctx *gin.Context) {
 		return
 	}
 
-	data := map[string]interface{}{"id": uint(id)}
+	data := map[string]any{"id": uint(id)}
 	if req.Title != "" {
 		data["title"] = req.Title
 	}
@@ -223,7 +223,7 @@ func HandleDeleteTask(ctx *gin.Context) {
 		return
 	}
 
-	response, err := common.CallRPC(common.TasksDelete, map[string]interface{}{
+	response, err := common.CallRPC(common.TasksDelete, map[string]any{
 		"id": uint(id),
 	})
 
@@ -271,7 +271,7 @@ func HandleMoveTask(ctx *gin.Context) {
 		return
 	}
 
-	response, err := common.CallRPC(common.TasksMove, map[string]interface{}{
+	response, err := common.CallRPC(common.TasksMove, map[string]any{
 		"id":       uint(id),
 		"columnId": req.ColumnID,
 	})
@@ -323,7 +323,7 @@ func HandleAddComment(ctx *gin.Context) {
 		return
 	}
 
-	response, err := common.CallRPC(common.TasksAddComment, map[string]interface{}{
+	response, err := common.CallRPC(common.TasksAddComment, map[string]any{
 		"taskId":  uint(id),
 		"userId":  userID,
 		"message": req.Message,
@@ -363,7 +363,7 @@ func HandleGetComments(ctx *gin.Context) {
 		return
 	}
 
-	response, err := common.CallRPC(common.TasksGetComments, map[string]interface{}{
+	response, err := common.CallRPC(common.TasksGetComments, map[string]any{
 		"taskId": uint(id),
 	})
 

@@ -2,14 +2,43 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 
 	"github.com/joho/godotenv"
 	"github.com/streadway/amqp"
+	"gorm.io/gorm"
 
 	"github.com/wetask/backend/pkg/common"
 	"github.com/wetask/backend/pkg/models"
 )
+
+func attachUserProfile(member *models.TeamMember) {
+	if member == nil {
+		return
+	}
+	if rpcResp, err := common.CallRPC(common.UsersGetByID, map[string]interface{}{"id": member.UserID}); err == nil && rpcResp != nil && rpcResp.Success {
+		if data, ok := rpcResp.Data.(map[string]interface{}); ok {
+			var user models.User
+			if id, ok := data["id"].(float64); ok {
+				user.ID = uint(id)
+			}
+			if email, ok := data["email"].(string); ok {
+				user.Email = email
+			}
+			if name, ok := data["name"].(string); ok {
+				user.Name = name
+			}
+			member.User = user
+		}
+	}
+}
+
+func attachUsersToMembers(members []models.TeamMember) {
+	for i := range members {
+		attachUserProfile(&members[i])
+	}
+}
 
 func main() {
 	// ? Load environment variables
@@ -143,43 +172,77 @@ func handleMessages(queue string, messages <-chan amqp.Delivery) {
 	}
 }
 
-// ---------------------------------------------------------------------
-// HANDLERS
-// ---------------------------------------------------------------------
 func handleCreate(req CreateTeamRequest) common.RPCResponse {
 	if req.Name == "" {
 		return common.RPCResponse{Success: false, Error: "Team name required", StatusCode: 400}
 	}
+	userReq := map[string]uint{"id": req.UserID}
+	resp, rpcErr := common.CallRPC(common.UsersGetByID, userReq)
+	if rpcErr != nil {
+		return common.RPCResponse{Success: false, Error: "Failed to verify user", StatusCode: 500}
+	}
+	if !resp.Success {
+		return common.RPCResponse{Success: false, Error: "User not found", StatusCode: 404}
+	}
 
-	team := models.Team{Name: req.Name}
-	if err := common.DB.Create(&team).Error; err != nil {
+	var createdTeam models.Team
+	err := common.DB.Transaction(func(tx *gorm.DB) error {
+		team := models.Team{Name: req.Name}
+		if err := tx.Create(&team).Error; err != nil {
+			return err
+		}
+
+		member := models.TeamMember{
+			TeamID: team.ID,
+			UserID: req.UserID,
+			Role:   "owner",
+		}
+		if err := tx.Create(&member).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Preload("Members").First(&team, team.ID).Error; err != nil {
+			return err
+		}
+		createdTeam = team
+		return nil
+	})
+
+	if err != nil {
 		return common.RPCResponse{Success: false, Error: "Failed to create team", StatusCode: 500}
 	}
 
-	// Add creator as owner
-	member := models.TeamMember{
-		TeamID: team.ID,
-		UserID: req.UserID,
-		Role:   "owner",
-	}
-	common.DB.Create(&member)
+	// Attach user profiles to members before returning
+	attachUsersToMembers(createdTeam.Members)
 
-	common.DB.Preload("Members.User").First(&team, team.ID)
-
-	return toRPC(teamResponse{Success: true, Data: &team})
+	fmt.Println("Created team :", createdTeam)
+	return toRPC(teamResponse{Success: true, Data: &createdTeam})
 }
 
 func handleGetAll() common.RPCResponse {
 	var teams []models.Team
-	common.DB.Preload("Members.User").Find(&teams)
+	common.DB.Preload("Members").Find(&teams)
+	for i := range teams {
+		if teams[i].Members == nil {
+			teams[i].Members = make([]models.TeamMember, 0)
+		}
+		// Attach user profiles for members
+		attachUsersToMembers(teams[i].Members)
+	}
 	return toRPC(teamsListResponse{Success: true, Data: teams})
 }
 
 func handleGetByID(req GetTeamByIDRequest) common.RPCResponse {
 	var team models.Team
-	if err := common.DB.Preload("Members.User").First(&team, req.ID).Error; err != nil {
+	if err := common.DB.Preload("Members").First(&team, req.ID).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Team not found", StatusCode: 404}
 	}
+	if team.Members == nil {
+		fmt.Println("No members found, initializing empty slice")
+		team.Members = make([]models.TeamMember, 0)
+	}
+	// Attach user profiles for members
+	attachUsersToMembers(team.Members)
 	return toRPC(teamResponse{Success: true, Data: &team})
 }
 
@@ -203,7 +266,8 @@ func handleAddMember(req AddMemberRequest) common.RPCResponse {
 		return common.RPCResponse{Success: false, Error: "Failed to add member", StatusCode: 500}
 	}
 
-	common.DB.Preload("User").First(&member, member.ID)
+	// Enrich member with user profile
+	attachUserProfile(&member)
 
 	common.PublishEvent(common.TeamMemberAdded, map[string]interface{}{
 		"teamId": req.TeamID,
@@ -233,16 +297,15 @@ func handleGetUserTeams(req GetUserTeamsRequest) common.RPCResponse {
 	var members []models.TeamMember
 	common.DB.Where("user_id = ?", req.UserID).
 		Preload("Team").
-		Preload("User").
 		Find(&members)
 
 	teams := make([]UserTeamSummary, len(members))
-	for i, m := range members {
+	for i, member := range members {
 		teams[i] = UserTeamSummary{
-			ID:        m.Team.ID,
-			Name:      m.Team.Name,
-			Role:      m.Role,
-			CreatedAt: m.Team.CreatedAt,
+			ID:        member.Team.ID,
+			Name:      member.Team.Name,
+			Role:      member.Role,
+			CreatedAt: member.Team.CreatedAt,
 		}
 	}
 

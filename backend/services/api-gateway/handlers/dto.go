@@ -70,8 +70,8 @@ type ColumnResponse struct {
 // CreateBoardRequest represents board creation request
 // @Description Board creation request
 type CreateBoardRequest struct {
-	Name   string `json:"name" example:"Q1 Project" binding:"required"` // Board name
-	TeamID uint   `json:"teamId" example:"1" binding:"required"`        // Team ID
+	Title  string `json:"title" example:"Q1 Project" binding:"required"` // Board title
+	TeamID uint   `json:"teamId" example:"1" binding:"required"`         // Team ID
 }
 
 // UpdateBoardRequest represents board update request
@@ -83,16 +83,22 @@ type UpdateBoardRequest struct {
 // CreateColumnRequest represents column creation request
 // @Description Column creation request
 type CreateColumnRequest struct {
-	Name     string `json:"name" example:"To Do" binding:"required"` // Column name
-	BoardID  uint   `json:"boardId" example:"1" binding:"required"`  // Board ID
-	Position int    `json:"position" example:"0"`                    // Column position
+	Title    string `json:"title" example:"To Do" binding:"required"` // Column title
+	BoardID  uint   `json:"boardId" example:"1" binding:"required"`   // Board ID
+	Position int    `json:"position" example:"0"`                     // Column position
 }
 
 // UpdateColumnRequest represents column update request
 // @Description Column update request
 type UpdateColumnRequest struct {
-	Name     string `json:"name" example:"In Progress"` // Column name
-	Position int    `json:"position" example:"1"`       // Column position
+	Title    string `json:"title" example:"In Progress"` // Column title
+	Position int    `json:"position" example:"1"`        // Column position
+}
+
+// GetColumnsRequest represents a request to fetch columns for a board
+// @Description Get columns by board request (supports URI `/board/:boardId` or query `?boardId=...`)
+type GetColumnsRequest struct {
+	BoardID uint `json:"boardId" form:"boardId" uri:"boardId" example:"1" binding:"required"` // Board ID
 }
 
 // ? Task requests and responses
@@ -161,6 +167,29 @@ type TeamResponse struct {
 	Name      string `json:"name" example:"Development Team"`          // Team name
 	CreatedAt string `json:"createdAt" example:"2024-01-01T00:00:00Z"` // Creation timestamp
 	UpdatedAt string `json:"updatedAt" example:"2024-01-01T00:00:00Z"` // Last update timestamp
+}
+
+// MemberResponse represents a team member
+// @Description Team member information
+type MemberResponse struct {
+	ID        uint         `json:"id" example:"1"`                           // Member ID
+	TeamID    uint         `json:"teamId" example:"1"`                       // Team ID
+	UserID    uint         `json:"userId" example:"2"`                       // User ID
+	Role      string       `json:"role" example:"owner"`                     // Role: owner, admin, member
+	User      UserResponse `json:"user,omitempty"`                           // Nested user info
+	CreatedAt string       `json:"createdAt" example:"2024-01-01T00:00:00Z"` // Creation timestamp
+	UpdatedAt string       `json:"updatedAt" example:"2024-01-01T00:00:00Z"` // Last update timestamp
+}
+
+// Extended TeamResponse with members and boards
+// @Description Team information with members and boards
+type TeamFullResponse struct {
+	ID        uint             `json:"id" example:"1"`                           // Team ID
+	Name      string           `json:"name" example:"Development Team"`          // Team name
+	Members   []MemberResponse `json:"members"`                                  // Team members
+	Boards    []BoardResponse  `json:"boards"`                                   // Team boards
+	CreatedAt string           `json:"createdAt" example:"2024-01-01T00:00:00Z"` // Creation timestamp
+	UpdatedAt string           `json:"updatedAt" example:"2024-01-01T00:00:00Z"` // Last update timestamp
 }
 
 // CreateTeamRequest represents team creation request

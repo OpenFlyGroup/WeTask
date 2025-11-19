@@ -16,6 +16,34 @@ import (
 	"github.com/wetask/backend/pkg/models"
 )
 
+// attachUserToTask populates Task.User by calling the Users service.
+func attachUserToTask(t *models.Task) {
+	if t == nil || t.AssignedTo == nil {
+		return
+	}
+	if rpcResp, err := common.CallRPC(common.UsersGetByID, map[string]interface{}{"id": *t.AssignedTo}); err == nil && rpcResp != nil && rpcResp.Success {
+		if data, ok := rpcResp.Data.(map[string]interface{}); ok {
+			var u models.User
+			if id, ok := data["id"].(float64); ok {
+				u.ID = uint(id)
+			}
+			if email, ok := data["email"].(string); ok {
+				u.Email = email
+			}
+			if name, ok := data["name"].(string); ok {
+				u.Name = name
+			}
+			t.User = &u
+		}
+	}
+}
+
+func attachUsersToTasks(tasks []models.Task) {
+	for i := range tasks {
+		attachUserToTask(&tasks[i])
+	}
+}
+
 func main() {
 	// ? Load environment variables
 	if err := godotenv.Load(); err != nil {
@@ -169,9 +197,6 @@ func handleMessages(queue string, messages <-chan amqp.Delivery) {
 	}
 }
 
-// ---------------------------------------------------------------------
-// TASK HANDLERS
-// ---------------------------------------------------------------------
 func handleCreateTask(req CreateTaskRequest) common.RPCResponse {
 	if req.Title == "" {
 		return common.RPCResponse{Success: false, Error: "Task title required", StatusCode: 400}
@@ -198,6 +223,9 @@ func handleCreateTask(req CreateTaskRequest) common.RPCResponse {
 	var column models.Column
 	common.DB.First(&column, task.ColumnID)
 
+	// Enrich task with assigned user profile (if any)
+	attachUserToTask(&task)
+
 	common.PublishEvent(common.TaskCreated, map[string]interface{}{
 		"boardId": column.BoardID,
 		"task":    task,
@@ -208,9 +236,10 @@ func handleCreateTask(req CreateTaskRequest) common.RPCResponse {
 
 func handleGetTaskByID(req GetTaskByIDRequest) common.RPCResponse {
 	var task models.Task
-	if err := common.DB.Preload("Column").Preload("User").First(&task, req.ID).Error; err != nil {
+	if err := common.DB.Preload("Column").First(&task, req.ID).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Task not found", StatusCode: 404}
 	}
+	attachUserToTask(&task)
 	return toRPC(taskResponse{Success: true, Data: &task})
 }
 
@@ -224,7 +253,10 @@ func handleGetTasksByBoard(req GetTasksByBoardRequest) common.RPCResponse {
 	}
 
 	var tasks []models.Task
-	common.DB.Where("column_id IN ?", columnIDs).Preload("User").Find(&tasks)
+	common.DB.Where("column_id IN ?", columnIDs).Find(&tasks)
+
+	// Enrich tasks with assigned user profiles
+	attachUsersToTasks(tasks)
 
 	return toRPC(tasksListResponse{Success: true, Data: tasks})
 }
@@ -254,6 +286,9 @@ func handleUpdateTask(req UpdateTaskRequest) common.RPCResponse {
 
 	var column models.Column
 	common.DB.First(&column, task.ColumnID)
+
+	// Enrich task with assigned user profile
+	attachUserToTask(&task)
 
 	common.PublishEvent(common.TaskUpdated, map[string]interface{}{
 		"boardId": column.BoardID,
@@ -297,6 +332,9 @@ func handleMoveTask(req MoveTaskRequest) common.RPCResponse {
 	if err := common.DB.Save(&task).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Failed to move task", StatusCode: 500}
 	}
+
+	// Enrich task before publishing
+	attachUserToTask(&task)
 
 	common.PublishEvent(common.TaskUpdated, map[string]interface{}{
 		"boardId": boardID,

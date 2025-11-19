@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// ? Comment is stored in MongoDB
+// ? stored in MongoDB
 type Comment struct {
 	ID        string    `json:"id" bson:"_id,omitempty"`
 	TaskID    uint      `json:"taskId" bson:"taskId"`
