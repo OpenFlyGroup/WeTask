@@ -16,14 +16,18 @@ var DB *gorm.DB
 
 // ? InitPostgreSQL initializes PostgreSQL connection
 func InitPostgreSQL() error {
-	dsn := fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
-		getEnv("DB_HOST", "localhost"),
-		getEnv("DB_USER", "kanban"),
-		getEnv("DB_PASSWORD", "kanban123"),
-		getEnv("DB_NAME", "kanban"),
-		getEnv("DB_PORT", "5432"),
-	)
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		dsn = fmt.Sprintf(
+			"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
+			getEnv("DB_HOST", "localhost"),
+			getEnv("DB_USER", "kanban"),
+			getEnv("DB_PASSWORD", "kanban123"),
+			getEnv("DB_NAME", "kanban"),
+			getEnv("DB_PORT", "5432"),
+		)
+	}
+	fmt.Println("Connecting to database with DSN:", dsn)
 
 	var err error
 	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
@@ -87,24 +91,9 @@ func MigrateTasksModels() error {
 	if DB == nil {
 		return fmt.Errorf("database not initialized")
 	}
-	// Ensure task table exists
-	if err := DB.AutoMigrate(&models.Task{}); err != nil {
-		return err
-	}
-
-	// Remove any leftover DB-level foreign key constraint to the Users
-	// table (this service uses the Users service and must not enforce
-	// cross-database foreign keys). Drop constraint if it exists.
-	migrator := DB.Migrator()
-	if migrator.HasConstraint(&models.Task{}, "User") {
-		_ = migrator.DropConstraint(&models.Task{}, "User")
-	}
-	// Some DBs name the FK like fk_tasks_user; also attempt to drop that.
-	if migrator.HasConstraint(&models.Task{}, "fk_tasks_user") {
-		_ = migrator.DropConstraint(&models.Task{}, "fk_tasks_user")
-	}
-
-	return nil
+	return DB.AutoMigrate(
+		&models.Task{},
+	)
 }
 
 func getEnv(key, defaultValue string) string {

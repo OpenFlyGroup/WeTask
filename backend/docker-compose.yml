@@ -13,7 +13,7 @@ services:
     networks:
       - network
     healthcheck:
-      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -32,7 +32,7 @@ services:
     networks:
       - network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U auth_user -d auth_db" ]
+      test: ["CMD-SHELL", "pg_isready -U auth_user -d auth_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -51,7 +51,7 @@ services:
     networks:
       - network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U teams_user -d teams_db" ]
+      test: ["CMD-SHELL", "pg_isready -U teams_user -d teams_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -70,7 +70,7 @@ services:
     networks:
       - network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U boards_user -d boards_db" ]
+      test: ["CMD-SHELL", "pg_isready -U boards_user -d boards_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -89,7 +89,7 @@ services:
     networks:
       - network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U tasks_user -d tasks_db" ]
+      test: ["CMD-SHELL", "pg_isready -U tasks_user -d tasks_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -106,7 +106,7 @@ services:
     networks:
       - network
     healthcheck:
-      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -132,7 +132,7 @@ services:
         condition: service_healthy
     networks:
       - network
-    command: [ "./app" ]
+    command: ["./app"]
     restart: unless-stopped
 
   auth-service:
@@ -143,6 +143,7 @@ services:
         SERVICE: auth-service
     container_name: auth_service
     environment:
+      - DATABASE_URL=postgresql://${AUTH_DB_USER:-auth_user}:${AUTH_DB_PASSWORD:-auth_pass123}@${AUTH_DB_HOST:-postgres-auth}:${AUTH_DB_PORT:-5432}/${AUTH_DB_NAME:-auth_db}
       - DB_HOST=${AUTH_DB_HOST:-postgres-auth}
       - DB_PORT=${AUTH_DB_PORT:-5432}
       - DB_USER=${AUTH_DB_USER:-auth_user}
@@ -160,7 +161,7 @@ services:
         condition: service_healthy
     networks:
       - network
-    command: [ "./app" ]
+    command: ["./app"]
     restart: unless-stopped
 
   postgres-users:
@@ -177,7 +178,7 @@ services:
     networks:
       - network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U users_user -d users_db" ]
+      test: ["CMD-SHELL", "pg_isready -U users_user -d users_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -190,6 +191,7 @@ services:
         SERVICE: users-service
     container_name: users_service
     environment:
+      - DATABASE_URL=postgresql://${USERS_DB_USER:-users_user}:${USERS_DB_PASSWORD:-users_pass123}@${USERS_DB_HOST:-postgres-users}:${USERS_DB_PORT:-5432}/${USERS_DB_NAME:-users_db}
       - DB_HOST=${USERS_DB_HOST:-postgres-users}
       - DB_PORT=${USERS_DB_PORT:-5432}
       - DB_USER=${USERS_DB_USER:-users_user}
@@ -206,7 +208,7 @@ services:
         condition: service_healthy
     networks:
       - network
-    command: [ "./app" ]
+    command: ["./app"]
     restart: unless-stopped
 
   teams-service:
@@ -217,6 +219,7 @@ services:
         SERVICE: teams-service
     container_name: teams_service
     environment:
+      - DATABASE_URL=postgresql://${TEAMS_DB_USER:-teams_user}:${TEAMS_DB_PASSWORD:-teams_pass123}@${TEAMS_DB_HOST:-postgres-teams}:${TEAMS_DB_PORT:-5432}/${TEAMS_DB_NAME:-teams_db}
       - DB_HOST=${TEAMS_DB_HOST:-postgres-teams}
       - DB_PORT=${TEAMS_DB_PORT:-5432}
       - DB_USER=${TEAMS_DB_USER:-teams_user}
@@ -233,7 +236,7 @@ services:
         condition: service_healthy
     networks:
       - network
-    command: [ "./app" ]
+    command: ["./app"]
     restart: unless-stopped
 
   boards-service:
@@ -244,6 +247,7 @@ services:
         SERVICE: boards-service
     container_name: boards_service
     environment:
+      - DATABASE_URL=postgresql://${BOARDS_DB_USER:-boards_user}:${BOARDS_DB_PASSWORD:-boards_pass123}@${BOARDS_DB_HOST:-postgres-boards}:${BOARDS_DB_PORT:-5432}/${BOARDS_DB_NAME:-boards_db}
       - DB_HOST=${BOARDS_DB_HOST:-postgres-boards}
       - DB_PORT=${BOARDS_DB_PORT:-5432}
       - DB_USER=${BOARDS_DB_USER:-boards_user}
@@ -260,7 +264,7 @@ services:
         condition: service_healthy
     networks:
       - network
-    command: [ "./app" ]
+    command: ["./app"]
     restart: unless-stopped
 
   tasks-service:
@@ -271,6 +275,7 @@ services:
         SERVICE: tasks-service
     container_name: tasks_service
     environment:
+      - DATABASE_URL=postgresql://${TASKS_DB_USER:-tasks_user}:${TASKS_DB_PASSWORD:-tasks_pass123}@${TASKS_DB_HOST:-postgres-tasks}:${TASKS_DB_PORT:-5432}/${TASKS_DB_NAME:-tasks_db}
       - DB_HOST=${TASKS_DB_HOST:-postgres-tasks}
       - DB_PORT=${TASKS_DB_PORT:-5432}
       - DB_USER=${TASKS_DB_USER:-tasks_user}
@@ -293,7 +298,7 @@ services:
         condition: service_healthy
     networks:
       - network
-    command: [ "./app" ]
+    command: ["./app"]
     restart: unless-stopped
 
 networks:
