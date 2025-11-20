@@ -55,7 +55,7 @@ function Dashboard() {
     }
   }, [teamsQ.data, meQ.data, qc])
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="mx-auto">
       <h1 className="text-2xl font-semibold mb-6">Dashboard</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <section className="card bg-base-100 shadow">

@@ -7,7 +7,7 @@ const Footer = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ delay: 0.2 }}
-      className="flex flex-col md:flex-row items-center justify-between p-4 bg-base-100 text-base-content shadow"
+      className="flex flex-col md:flex-row items-center justify-between p-4 bg-base-100 text-base-content shadow-lg"
     >
       <aside>
         <a

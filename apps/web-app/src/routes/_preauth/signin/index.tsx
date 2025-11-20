@@ -15,42 +15,42 @@ import toast from 'react-hot-toast'
 import logo from 'src/assets/logo.svg'
 import AuthStorage from '@/shared/store/authStore'
 
-export const Route = createFileRoute('/signup')({
+export const Route = createFileRoute('/_preauth/signin/')({
   beforeLoad: () => {
     if (!isBrowser) return
     if (AuthStorage.getTokens()) {
       throw redirect({ to: '/dashboard' })
     }
   },
-  component: SignupPage,
+  component: SigninPage,
 })
 
-interface SignupFormValues {
-  name: string
+interface SigninFormValues {
   email: string
   password: string
+  remember: boolean
 }
 
-export function SignupPage() {
+export function SigninPage() {
   const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState<boolean>(false)
 
   const mutation = useMutation({
-    mutationFn: (values: SignupFormValues) => AuthService.signUp(values),
+    mutationFn: (values: SigninFormValues) => AuthService.signIn(values),
     onSuccess: () => {
-      toast.success('Account created successfully!')
+      toast.success('Logged in successfully!')
       navigate({ to: '/boards' })
     },
     onError: (err: any) => {
-      toast.error(err?.message ?? 'Registration failed. Please try again.')
+      toast.error(err?.message ?? 'Login failed. Please try again.')
     },
   })
 
   const form = useForm({
     defaultValues: {
-      name: '',
       email: '',
       password: '',
+      remember: false,
     },
     onSubmit: async ({ value }) => {
       mutation.mutate(value)
@@ -62,10 +62,9 @@ export function SignupPage() {
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center gap-4 mb-6">
           <img src={logo} alt="WeTask logo" className="h-10" />
-          <h1 className="text-2xl font-semibold">Create your account</h1>
+          <h1 className="text-2xl font-semibold">Welcome back</h1>
           <p className="text-sm text-muted-foreground text-center">
-            Join <span className="font-medium">WeTask</span> and start
-            organizing your work better
+            Sign in to continue to <span className="font-medium">WeTask</span>
           </p>
         </div>
 
@@ -79,57 +78,6 @@ export function SignupPage() {
               }}
               className="flex flex-col gap-4"
             >
-              {/* Full Name Field */}
-              <form.Field
-                name="name"
-                validators={{
-                  onChange: ({ value }) =>
-                    !value
-                      ? 'Full name is required'
-                      : value.trim().length < 2
-                        ? 'Name must be at least 2 characters'
-                        : undefined,
-                  onBlur: ({ value }) =>
-                    !value
-                      ? 'Full name is required'
-                      : value.trim().length < 2
-                        ? 'Name must be at least 2 characters'
-                        : undefined,
-                }}
-              >
-                {(field) => (
-                  <label className="form-control">
-                    <div className="label">
-                      <span className="label-text">Full name</span>
-                    </div>
-                    <input
-                      id={field.name}
-                      value={field.state.value ?? ''}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      className={`input input-bordered w-full ${
-                        field.state.meta.errors.length ? 'input-error' : ''
-                      }`}
-                      placeholder="John Doe"
-                      autoComplete="name"
-                      aria-invalid={field.state.meta.errors.length > 0}
-                      aria-describedby={
-                        field.state.meta.errors.length > 0
-                          ? `${field.name}-error`
-                          : undefined
-                      }
-                    />
-                    {field.state.meta.errors.length > 0 && (
-                      <div id={`${field.name}-error`} className="label">
-                        <span className="label-text-alt text-error">
-                          {field.state.meta.errors.join(', ')}
-                        </span>
-                      </div>
-                    )}
-                  </label>
-                )}
-              </form.Field>
-
               {/* Email Field */}
               <form.Field
                 name="email"
@@ -140,12 +88,10 @@ export function SignupPage() {
                       : !/^\S+@\S+\.\S+$/.test(value)
                         ? 'Please enter a valid email'
                         : undefined,
-                  onBlur: ({ value }) =>
-                    !value
-                      ? 'Email is required'
-                      : !/^\S+@\S+\.\S+$/.test(value)
-                        ? 'Please enter a valid email'
-                        : undefined,
+                  onBlur: ({ value }) => {
+                    if (!value) return 'Email is required'
+                    return undefined
+                  },
                 }}
               >
                 {(field) => (
@@ -182,7 +128,6 @@ export function SignupPage() {
                 )}
               </form.Field>
 
-              {/* Password Field */}
               <form.Field
                 name="password"
                 validators={{
@@ -192,12 +137,12 @@ export function SignupPage() {
                       : value.length < 6
                         ? 'Password must be at least 6 characters'
                         : undefined,
-                  onBlur: ({ value }) =>
-                    !value
-                      ? 'Password is required'
-                      : value.length < 6
-                        ? 'Password must be at least 6 characters'
-                        : undefined,
+                  onBlur: ({ value }) => {
+                    if (!value) return 'Password is required'
+                    if (value.length < 6)
+                      return 'Password must be at least 6 characters'
+                    return undefined
+                  },
                 }}
               >
                 {(field) => (
@@ -215,7 +160,7 @@ export function SignupPage() {
                       }`}
                       type={showPassword ? 'text' : 'password'}
                       placeholder="Enter your password"
-                      autoComplete="new-password"
+                      autoComplete="current-password"
                       aria-invalid={field.state.meta.errors.length > 0}
                       aria-describedby={
                         field.state.meta.errors.length > 0
@@ -226,7 +171,7 @@ export function SignupPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword((prev) => !prev)}
-                      className="absolute right-2 z-10 top-7 btn btn-ghost btn-xs btn-circle h-8 w-8"
+                      className="absolute right-2 top-9 btn btn-ghost btn-xs btn-circle h-8 w-8"
                       aria-label={
                         showPassword ? 'Hide password' : 'Show password'
                       }
@@ -247,6 +192,31 @@ export function SignupPage() {
                   </label>
                 )}
               </form.Field>
+
+              <div className="flex items-center justify-between">
+                <form.Field
+                  name="remember"
+                  validators={{
+                    onChange: () => undefined,
+                  }}
+                >
+                  {(field) => (
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={field.state.value ?? false}
+                        onChange={(e) => field.handleChange(e.target.checked)}
+                        className="checkbox checkbox-sm"
+                      />
+                      <span className="text-sm">Remember me</span>
+                    </label>
+                  )}
+                </form.Field>
+
+                <Link to="/" className="text-sm link link-hover">
+                  Forgot password?
+                </Link>
+              </div>
 
               {/* Submit Button */}
               <form.Subscribe
@@ -271,10 +241,10 @@ export function SignupPage() {
                     {isSubmitting || mutation.isPending ? (
                       <>
                         <span className="loading loading-spinner loading-xs mr-2"></span>
-                        Creating account...
+                        Signing in...
                       </>
                     ) : (
-                      'Create Account'
+                      'Sign In'
                     )}
                   </motion.button>
                 )}
@@ -282,14 +252,14 @@ export function SignupPage() {
             </form>
 
             <div className="text-center text-sm mt-6">
-              Already have an account?{' '}
-              <Link to="/signin" className="link link-primary font-medium">
-                Sign in
+              Don't have an account?{' '}
+              <Link to="/signup" className="link link-primary font-medium">
+                Sign Up
               </Link>
             </div>
 
             <div className="mt-4 text-xs text-center text-muted-foreground">
-              By signing up you agree to our{' '}
+              By signing in you agree to our{' '}
               <a
                 className="link"
                 href="/terms"

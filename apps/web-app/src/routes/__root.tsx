@@ -33,6 +33,10 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         name: 'viewport',
         content: 'width=device-width, initial-scale=1',
       },
+      {
+        name: 'viewport',
+        content: 'viewport-fit=cover',
+      },
       { title: 'WeTask' },
     ],
     links: [
@@ -46,29 +50,21 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   shellComponent: RootDocument,
 })
 
+const urlsWithHeader = ['/signin', '/signup', '/']
+
 function RootDocument({ children }: { children: React.ReactNode }) {
   const routerState = useRouterState()
+  const currentPath = routerState.location.pathname
 
   return (
     <html lang="en">
       <head>
         <HeadContent />
       </head>
-      <body>
-        <Header />
+      <body className="flex flex-col min-h-screen">
+        {urlsWithHeader.includes(currentPath) ? <Header /> : null}
 
-        <AnimatePresence mode="wait">
-          <motion.main
-            key={routerState.location.pathname}
-            initial={{ opacity: 0, filter: 'blur(8px)', y: 10 }}
-            animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
-            exit={{ opacity: 0, filter: 'blur(8px)', y: -10 }}
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
-            className="flex-1 p-4 max-w-7xl mx-auto w-full"
-          >
-            {children ?? <Outlet />}
-          </motion.main>
-        </AnimatePresence>
+        {children ?? <Outlet />}
 
         <Footer />
 
