@@ -8,6 +8,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/streadway/amqp"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/wetask/backend/pkg/common"
 	"github.com/wetask/backend/pkg/models"
@@ -185,8 +186,29 @@ func handleCreate(req CreateTeamRequest) common.RPCResponse {
 		return common.RPCResponse{Success: false, Error: "User not found", StatusCode: 404}
 	}
 
+	var remoteUserID uint
+	var remoteEmail, remoteName string
+	if data, ok := resp.Data.(map[string]interface{}); ok {
+		if idf, ok := data["id"].(float64); ok {
+			remoteUserID = uint(idf)
+		}
+		if e, ok := data["email"].(string); ok {
+			remoteEmail = e
+		}
+		if n, ok := data["name"].(string); ok {
+			remoteName = n
+		}
+	}
+
 	var createdTeam models.Team
 	err := common.DB.Transaction(func(tx *gorm.DB) error {
+		if remoteUserID != 0 {
+			u := models.User{ID: remoteUserID, Email: remoteEmail, Name: remoteName}
+			if err := tx.Clauses(clause.OnConflict{UpdateAll: true}).Create(&u).Error; err != nil {
+				return err
+			}
+		}
+
 		team := models.Team{Name: req.Name}
 		if err := tx.Create(&team).Error; err != nil {
 			return err
@@ -311,3 +333,4 @@ func handleGetUserTeams(req GetUserTeamsRequest) common.RPCResponse {
 
 	return toRPC(userTeamResponse{Success: true, Data: teams})
 }
+

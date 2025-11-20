@@ -204,6 +204,11 @@ func handleCreateBoard(req CreateBoardRequest) common.RPCResponse {
 		return common.RPCResponse{Success: false, Error: "User is not a team member", StatusCode: 403}
 	}
 
+	localTeam := models.Team{}
+	if err := common.DB.Where(&models.Team{ID: team.ID}).FirstOrCreate(&localTeam, models.Team{ID: team.ID, Name: team.Name}).Error; err != nil {
+		return common.RPCResponse{Success: false, Error: "Failed to synchronize team locally", StatusCode: 500}
+	}
+
 	board := models.Board{Title: req.Title, TeamID: req.TeamID}
 	if err := common.DB.Create(&board).Error; err != nil {
 		return common.RPCResponse{Success: false, Error: "Failed to create board", StatusCode: 500}

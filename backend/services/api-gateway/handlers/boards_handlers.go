@@ -213,7 +213,6 @@ func HandleDeleteBoard(ctx *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        request  body      CreateColumnRequest  true  "Column creation request"
 // @Success      200      {object}  ColumnResponse       "Column created successfully"
 // @Failure      400      {object}  ErrorResponse        "Invalid request - validation error"
 // @Failure      401      {object}  ErrorResponse        "Unauthorized - invalid or missing token"
@@ -253,13 +252,12 @@ func HandleCreateColumn(ctx *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        boardId  query     int              true  "Board ID"  example(1)
 // @Success      200      {array}   ColumnResponse   "List of columns"
 // @Failure      400      {object}  ErrorResponse    "Invalid board ID format"
 // @Failure      401      {object}  ErrorResponse    "Unauthorized - invalid or missing token"
 // @Failure      404      {object}  ErrorResponse    "Board not found"
 // @Failure      500      {object}  ErrorResponse    "Internal server error"
-// @Router       /columns [get]
+// @Router       /columns/board/{id} [get]
 func HandleGetColumns(ctx *gin.Context) {
 	var req GetColumnsRequest
 	if err := ctx.ShouldBindUri(&req); err != nil {

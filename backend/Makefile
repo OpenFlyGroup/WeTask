@@ -66,6 +66,10 @@ test:
 	@go test ./...
 
 
+run-tests:
+	@powershell -NoProfile -ExecutionPolicy Bypass -File tests\run-tests.ps1 -RunAll
+
+
 # ? Generate Swagger documentation
 swagger:
 	@echo "Generating Swagger documentation..."
