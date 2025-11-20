@@ -9,12 +9,13 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SignupRouteImport } from './routes/signup'
-import { Route as SigninRouteImport } from './routes/signin'
+import { Route as PreauthRouteImport } from './routes/_preauth'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
 import { Route as DemoTableRouteImport } from './routes/demo/table'
+import { Route as PreauthSignupIndexRouteImport } from './routes/_preauth/signup/index'
+import { Route as PreauthSigninIndexRouteImport } from './routes/_preauth/signin/index'
 import { Route as AuthTeamsIndexRouteImport } from './routes/_auth/teams/index'
 import { Route as AuthProfileIndexRouteImport } from './routes/_auth/profile/index'
 import { Route as AuthDashboardIndexRouteImport } from './routes/_auth/dashboard/index'
@@ -31,14 +32,8 @@ import { Route as DemoStartSsrSpaModeRouteImport } from './routes/demo/start.ssr
 import { Route as DemoStartSsrFullSsrRouteImport } from './routes/demo/start.ssr.full-ssr'
 import { Route as DemoStartSsrDataOnlyRouteImport } from './routes/demo/start.ssr.data-only'
 
-const SignupRoute = SignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SigninRoute = SigninRouteImport.update({
-  id: '/signin',
-  path: '/signin',
+const PreauthRoute = PreauthRouteImport.update({
+  id: '/_preauth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -59,6 +54,16 @@ const DemoTableRoute = DemoTableRouteImport.update({
   id: '/demo/table',
   path: '/demo/table',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PreauthSignupIndexRoute = PreauthSignupIndexRouteImport.update({
+  id: '/signup/',
+  path: '/signup/',
+  getParentRoute: () => PreauthRoute,
+} as any)
+const PreauthSigninIndexRoute = PreauthSigninIndexRouteImport.update({
+  id: '/signin/',
+  path: '/signin/',
+  getParentRoute: () => PreauthRoute,
 } as any)
 const AuthTeamsIndexRoute = AuthTeamsIndexRouteImport.update({
   id: '/teams/',
@@ -138,8 +143,6 @@ const DemoStartSsrDataOnlyRoute = DemoStartSsrDataOnlyRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/signin': typeof SigninRoute
-  '/signup': typeof SignupRoute
   '/demo/table': typeof DemoTableRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/boards/$boardId': typeof AuthBoardsBoardIdRoute
@@ -153,6 +156,8 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthDashboardIndexRoute
   '/profile': typeof AuthProfileIndexRoute
   '/teams': typeof AuthTeamsIndexRoute
+  '/signin': typeof PreauthSigninIndexRoute
+  '/signup': typeof PreauthSignupIndexRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
@@ -160,8 +165,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/signin': typeof SigninRoute
-  '/signup': typeof SignupRoute
   '/demo/table': typeof DemoTableRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/boards/$boardId': typeof AuthBoardsBoardIdRoute
@@ -175,6 +178,8 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthDashboardIndexRoute
   '/profile': typeof AuthProfileIndexRoute
   '/teams': typeof AuthTeamsIndexRoute
+  '/signin': typeof PreauthSigninIndexRoute
+  '/signup': typeof PreauthSignupIndexRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
@@ -184,8 +189,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_auth': typeof AuthRouteWithChildren
-  '/signin': typeof SigninRoute
-  '/signup': typeof SignupRoute
+  '/_preauth': typeof PreauthRouteWithChildren
   '/demo/table': typeof DemoTableRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/_auth/boards/$boardId': typeof AuthBoardsBoardIdRoute
@@ -199,6 +203,8 @@ export interface FileRoutesById {
   '/_auth/dashboard/': typeof AuthDashboardIndexRoute
   '/_auth/profile/': typeof AuthProfileIndexRoute
   '/_auth/teams/': typeof AuthTeamsIndexRoute
+  '/_preauth/signin/': typeof PreauthSigninIndexRoute
+  '/_preauth/signup/': typeof PreauthSignupIndexRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
@@ -208,8 +214,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/signin'
-    | '/signup'
     | '/demo/table'
     | '/demo/tanstack-query'
     | '/boards/$boardId'
@@ -223,6 +227,8 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/profile'
     | '/teams'
+    | '/signin'
+    | '/signup'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
@@ -230,8 +236,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/signin'
-    | '/signup'
     | '/demo/table'
     | '/demo/tanstack-query'
     | '/boards/$boardId'
@@ -245,6 +249,8 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/profile'
     | '/teams'
+    | '/signin'
+    | '/signup'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
@@ -253,8 +259,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_auth'
-    | '/signin'
-    | '/signup'
+    | '/_preauth'
     | '/demo/table'
     | '/demo/tanstack-query'
     | '/_auth/boards/$boardId'
@@ -268,6 +273,8 @@ export interface FileRouteTypes {
     | '/_auth/dashboard/'
     | '/_auth/profile/'
     | '/_auth/teams/'
+    | '/_preauth/signin/'
+    | '/_preauth/signup/'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
@@ -277,8 +284,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRouteWithChildren
-  SigninRoute: typeof SigninRoute
-  SignupRoute: typeof SignupRoute
+  PreauthRoute: typeof PreauthRouteWithChildren
   DemoTableRoute: typeof DemoTableRoute
   DemoTanstackQueryRoute: typeof DemoTanstackQueryRoute
   DemoApiNamesRoute: typeof DemoApiNamesRoute
@@ -295,18 +301,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/signup': {
-      id: '/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof SignupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/signin': {
-      id: '/signin'
-      path: '/signin'
-      fullPath: '/signin'
-      preLoaderRoute: typeof SigninRouteImport
+    '/_preauth': {
+      id: '/_preauth'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof PreauthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_auth': {
@@ -336,6 +335,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/demo/table'
       preLoaderRoute: typeof DemoTableRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_preauth/signup/': {
+      id: '/_preauth/signup/'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof PreauthSignupIndexRouteImport
+      parentRoute: typeof PreauthRoute
+    }
+    '/_preauth/signin/': {
+      id: '/_preauth/signin/'
+      path: '/signin'
+      fullPath: '/signin'
+      preLoaderRoute: typeof PreauthSigninIndexRouteImport
+      parentRoute: typeof PreauthRoute
     }
     '/_auth/teams/': {
       id: '/_auth/teams/'
@@ -463,11 +476,23 @@ const AuthRouteChildren: AuthRouteChildren = {
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
+interface PreauthRouteChildren {
+  PreauthSigninIndexRoute: typeof PreauthSigninIndexRoute
+  PreauthSignupIndexRoute: typeof PreauthSignupIndexRoute
+}
+
+const PreauthRouteChildren: PreauthRouteChildren = {
+  PreauthSigninIndexRoute: PreauthSigninIndexRoute,
+  PreauthSignupIndexRoute: PreauthSignupIndexRoute,
+}
+
+const PreauthRouteWithChildren =
+  PreauthRoute._addFileChildren(PreauthRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
-  SigninRoute: SigninRoute,
-  SignupRoute: SignupRoute,
+  PreauthRoute: PreauthRouteWithChildren,
   DemoTableRoute: DemoTableRoute,
   DemoTanstackQueryRoute: DemoTanstackQueryRoute,
   DemoApiNamesRoute: DemoApiNamesRoute,

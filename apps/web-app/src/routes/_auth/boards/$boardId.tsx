@@ -151,10 +151,8 @@ function BoardDetailPage() {
         >
           <div className="card-body">
             <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-              <label className="form-control md:col-span-5">
-                <div className="label">
-                  <span className="label-text">New column name</span>
-                </div>
+              <fieldset className="fieldset md:col-span-5">
+                <legend className="fieldset-legend">New column name</legend>
                 <input
                   className="input input-bordered"
                   placeholder="Enter column name"
@@ -162,7 +160,7 @@ function BoardDetailPage() {
                   onChange={(e) => setNewColumn(e.target.value)}
                   required
                 />
-              </label>
+              </fieldset>
               <div className="md:col-span-1 flex items-end">
                 <button
                   className="btn btn-primary w-full"

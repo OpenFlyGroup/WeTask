@@ -59,7 +59,7 @@ function TeamsPage() {
     }
   }, [data, meQ.data, qc])
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="mx-auto">
       <h1 className="text-2xl font-semibold mb-4">Teams</h1>
       <form
         className="card bg-base-100 shadow mb-6"
@@ -69,11 +69,9 @@ function TeamsPage() {
         }}
       >
         <div className="card-body">
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-            <label className="form-control md:col-span-5">
-              <div className="label">
-                <span className="label-text">Team name</span>
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <fieldset className="fieldset md:col-span-5">
+              <legend className="fieldset-legend">Team name</legend>
               <input
                 className="input input-bordered"
                 placeholder="Team name"
@@ -81,15 +79,12 @@ function TeamsPage() {
                 onChange={(e) => setName(e.target.value)}
                 required
               />
-            </label>
-            <div className="md:col-span-1 flex items-end">
-              <button
-                className="btn btn-primary w-full"
-                disabled={createMut.isPending}
-              >
-                {createMut.isPending ? 'Creating...' : 'Create'}
-              </button>
-            </div>
+            </fieldset>
+          </div>
+          <div className="card-actions justify-end">
+            <button className="btn btn-primary" disabled={createMut.isPending}>
+              {createMut.isPending ? 'Creating...' : 'Create'}
+            </button>
           </div>
         </div>
       </form>

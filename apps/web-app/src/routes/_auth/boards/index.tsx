@@ -70,7 +70,7 @@ function BoardsPage() {
   })
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="mx-auto">
       <h1 className="text-2xl font-semibold mb-4">Boards</h1>
       <form
         className="card bg-base-100 shadow mb-6"
@@ -81,10 +81,8 @@ function BoardsPage() {
       >
         <div className="card-body">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <label className="form-control md:col-span-1">
-              <div className="label">
-                <span className="label-text">Board name</span>
-              </div>
+            <fieldset className="fieldset md:col-span-1">
+              <legend className="fieldset-legend">Board name</legend>
               <input
                 className="input input-bordered"
                 placeholder="Board name"
@@ -92,11 +90,9 @@ function BoardsPage() {
                 onChange={(e) => setTitle(e.target.value)}
                 required
               />
-            </label>
-            <label className="form-control md:col-span-2">
-              <div className="label">
-                <span className="label-text">TeamId</span>
-              </div>
+            </fieldset>
+            <fieldset className="fieldset md:col-span-2">
+              <legend className="fieldset-legend">TeamId</legend>
               <input
                 className="input input-bordered"
                 placeholder="TeamId"
@@ -104,7 +100,7 @@ function BoardsPage() {
                 required
                 onChange={(e) => setTeamId(Number(e.target.value))}
               />
-            </label>
+            </fieldset>
           </div>
           <div className="card-actions justify-end">
             <button className="btn btn-primary" disabled={createMut.isPending}>
