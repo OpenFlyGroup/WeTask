@@ -25,7 +25,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 
 		token := parts[1]
-		response, err := common.CallRPC(common.AuthValidate, map[string]interface{}{
+		response, err := common.CallRPC(common.AuthValidate, map[string]any{
 			"token": token,
 		})
 
@@ -35,7 +35,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		userData, ok := response.Data.(map[string]interface{})
+		userData, ok := response.Data.(map[string]any)
 		if !ok {
 			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token data"})
 			ctx.Abort()
@@ -78,7 +78,7 @@ func HandleRegister(ctx *gin.Context) {
 		return
 	}
 
-	response, err := common.CallRPC(common.AuthRegister, map[string]interface{}{
+	response, err := common.CallRPC(common.AuthRegister, map[string]any{
 		"email":    req.Email,
 		"password": req.Password,
 		"name":     req.Name,
@@ -120,7 +120,7 @@ func HandleLogin(ctx *gin.Context) {
 		return
 	}
 
-	response, err := common.CallRPC(common.AuthLogin, map[string]interface{}{
+	response, err := common.CallRPC(common.AuthLogin, map[string]any{
 		"email":    req.Email,
 		"password": req.Password,
 	})
@@ -160,7 +160,7 @@ func HandleRefresh(ctx *gin.Context) {
 		return
 	}
 
-	response, err := common.CallRPC(common.AuthRefresh, map[string]interface{}{
+	response, err := common.CallRPC(common.AuthRefresh, map[string]any{
 		"refreshToken": req.RefreshToken,
 	})
 

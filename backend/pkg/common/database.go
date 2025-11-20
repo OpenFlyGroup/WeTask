@@ -27,6 +27,7 @@ func InitPostgreSQL() error {
 			getEnv("DB_PORT", "5432"),
 		)
 	}
+	fmt.Println("Connecting to database with DSN:", dsn)
 
 	var err error
 	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{

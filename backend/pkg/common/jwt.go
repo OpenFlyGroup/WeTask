@@ -20,8 +20,7 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-// ? GenerateToken generates a JWT token. The caller provides issuedAt so
-// the auth service can ensure the token's IssuedAt exactly matches stored metadata.
+// ? GenerateToken generates a JWT token
 func GenerateToken(userID uint, expirationTime time.Duration, issuedAt time.Time) (string, error) {
 	expirationTimePoint := issuedAt.Add(expirationTime)
 	claims := &Claims{
@@ -56,4 +55,3 @@ func ValidateToken(tokenString string) (*Claims, error) {
 
 	return nil, errors.New("invalid token")
 }
-

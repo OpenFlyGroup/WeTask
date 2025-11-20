@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -60,7 +61,7 @@ func HandleCreateTeam(ctx *gin.Context) {
 		return
 	}
 
-	response, err := common.CallRPC(common.TeamsCreate, map[string]interface{}{
+	response, err := common.CallRPC(common.TeamsCreate, map[string]any{
 		"name":   req.Name,
 		"userId": userID,
 	})
@@ -99,7 +100,7 @@ func HandleGetTeam(ctx *gin.Context) {
 		return
 	}
 
-	response, err := common.CallRPC(common.TeamsGetByID, map[string]interface{}{
+	response, err := common.CallRPC(common.TeamsGetByID, map[string]any{
 		"id": uint(id),
 	})
 
@@ -112,7 +113,7 @@ func HandleGetTeam(ctx *gin.Context) {
 		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
-
+	fmt.Println("Team data:", response.Data)
 	ctx.JSON(http.StatusOK, response.Data)
 }
 
@@ -149,7 +150,7 @@ func HandleAddTeamMember(ctx *gin.Context) {
 		return
 	}
 
-	response, err := common.CallRPC(common.TeamsAddMember, map[string]interface{}{
+	response, err := common.CallRPC(common.TeamsAddMember, map[string]any{
 		"teamId": uint(id),
 		"userId": req.UserID,
 		"role":   req.Role,
@@ -196,7 +197,7 @@ func HandleRemoveTeamMember(ctx *gin.Context) {
 		return
 	}
 
-	response, err := common.CallRPC(common.TeamsRemoveMember, map[string]interface{}{
+	response, err := common.CallRPC(common.TeamsRemoveMember, map[string]any{
 		"teamId": uint(teamID),
 		"userId": uint(userID),
 	})

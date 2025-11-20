@@ -13,7 +13,6 @@ type Board struct {
 	CreatedAt time.Time      `json:"createdAt"`
 	UpdatedAt time.Time      `json:"updatedAt"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
-	Team      Team           `json:"team,omitempty" gorm:"foreignKey:TeamID;constraint:OnDelete:CASCADE"`
+	Team      Team           `json:"team,omitempty" gorm:"-"`
 	Columns   []Column       `json:"columns,omitempty" gorm:"foreignKey:BoardID;constraint:OnDelete:CASCADE"`
 }
-

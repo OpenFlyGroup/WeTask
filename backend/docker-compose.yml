@@ -143,7 +143,7 @@ services:
         SERVICE: auth-service
     container_name: auth_service
     environment:
-      - DATABASE_URL=postgresql://auth_user:auth_pass123@postgres-auth:5432/auth_db
+      - DATABASE_URL=postgresql://${AUTH_DB_USER:-auth_user}:${AUTH_DB_PASSWORD:-auth_pass123}@${AUTH_DB_HOST:-postgres-auth}:${AUTH_DB_PORT:-5432}/${AUTH_DB_NAME:-auth_db}
       - DB_HOST=${AUTH_DB_HOST:-postgres-auth}
       - DB_PORT=${AUTH_DB_PORT:-5432}
       - DB_USER=${AUTH_DB_USER:-auth_user}
@@ -191,7 +191,7 @@ services:
         SERVICE: users-service
     container_name: users_service
     environment:
-      - DATABASE_URL=postgresql://users_user:users_pass123@postgres-users:5432/users_db
+      - DATABASE_URL=postgresql://${USERS_DB_USER:-users_user}:${USERS_DB_PASSWORD:-users_pass123}@${USERS_DB_HOST:-postgres-users}:${USERS_DB_PORT:-5432}/${USERS_DB_NAME:-users_db}
       - DB_HOST=${USERS_DB_HOST:-postgres-users}
       - DB_PORT=${USERS_DB_PORT:-5432}
       - DB_USER=${USERS_DB_USER:-users_user}
@@ -219,7 +219,7 @@ services:
         SERVICE: teams-service
     container_name: teams_service
     environment:
-      - DATABASE_URL=postgresql://teams_user:teams_pass123@postgres-teams:5432/teams_db
+      - DATABASE_URL=postgresql://${TEAMS_DB_USER:-teams_user}:${TEAMS_DB_PASSWORD:-teams_pass123}@${TEAMS_DB_HOST:-postgres-teams}:${TEAMS_DB_PORT:-5432}/${TEAMS_DB_NAME:-teams_db}
       - DB_HOST=${TEAMS_DB_HOST:-postgres-teams}
       - DB_PORT=${TEAMS_DB_PORT:-5432}
       - DB_USER=${TEAMS_DB_USER:-teams_user}
@@ -247,7 +247,7 @@ services:
         SERVICE: boards-service
     container_name: boards_service
     environment:
-      - DATABASE_URL=postgresql://boards_user:boards_pass123@postgres-boards:5432/boards_db
+      - DATABASE_URL=postgresql://${BOARDS_DB_USER:-boards_user}:${BOARDS_DB_PASSWORD:-boards_pass123}@${BOARDS_DB_HOST:-postgres-boards}:${BOARDS_DB_PORT:-5432}/${BOARDS_DB_NAME:-boards_db}
       - DB_HOST=${BOARDS_DB_HOST:-postgres-boards}
       - DB_PORT=${BOARDS_DB_PORT:-5432}
       - DB_USER=${BOARDS_DB_USER:-boards_user}
@@ -275,7 +275,7 @@ services:
         SERVICE: tasks-service
     container_name: tasks_service
     environment:
-      - DATABASE_URL=postgresql://tasks_user:tasks_pass123@postgres-tasks:5432/tasks_db
+      - DATABASE_URL=postgresql://${TASKS_DB_USER:-tasks_user}:${TASKS_DB_PASSWORD:-tasks_pass123}@${TASKS_DB_HOST:-postgres-tasks}:${TASKS_DB_PORT:-5432}/${TASKS_DB_NAME:-tasks_db}
       - DB_HOST=${TASKS_DB_HOST:-postgres-tasks}
       - DB_PORT=${TASKS_DB_PORT:-5432}
       - DB_USER=${TASKS_DB_USER:-tasks_user}

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -20,7 +21,13 @@ import (
 // @Failure      500  {object}  ErrorResponse  "Internal server error"
 // @Router       /boards [get]
 func HandleGetBoards(ctx *gin.Context) {
-	response, err := common.CallRPC(common.BoardsGetAll, nil)
+	userIDVal, _ := ctx.Get("userId")
+	userID := userIDVal.(uint)
+
+	response, err := common.CallRPC(common.BoardsGetAll, map[string]any{
+		"userId": userID,
+	})
+
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -58,8 +65,8 @@ func HandleCreateBoard(ctx *gin.Context) {
 		return
 	}
 
-	response, err := common.CallRPC(common.BoardsCreate, map[string]interface{}{
-		"name":   req.Name,
+	response, err := common.CallRPC(common.BoardsCreate, map[string]any{
+		"title":  req.Title,
 		"teamId": req.TeamID,
 		"userId": userID,
 	})
@@ -94,11 +101,11 @@ func HandleCreateBoard(ctx *gin.Context) {
 func HandleGetBoard(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid board ID"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid board ID: %s", ctx.Param("id"))})
 		return
 	}
 
-	response, err := common.CallRPC(common.BoardsGetByID, map[string]interface{}{
+	response, err := common.CallRPC(common.BoardsGetByID, map[string]any{
 		"id": uint(id),
 	})
 
@@ -133,7 +140,7 @@ func HandleGetBoard(ctx *gin.Context) {
 func HandleUpdateBoard(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid board ID"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid board ID: %s", ctx.Param("id"))})
 		return
 	}
 
@@ -143,7 +150,7 @@ func HandleUpdateBoard(ctx *gin.Context) {
 		return
 	}
 
-	response, err := common.CallRPC(common.BoardsUpdate, map[string]interface{}{
+	response, err := common.CallRPC(common.BoardsUpdate, map[string]any{
 		"id":   uint(id),
 		"name": req.Name,
 	})
@@ -178,11 +185,11 @@ func HandleUpdateBoard(ctx *gin.Context) {
 func HandleDeleteBoard(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid board ID"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid board ID: %s", ctx.Param("id"))})
 		return
 	}
 
-	response, err := common.CallRPC(common.BoardsDelete, map[string]interface{}{
+	response, err := common.CallRPC(common.BoardsDelete, map[string]any{
 		"id": uint(id),
 	})
 
@@ -220,8 +227,8 @@ func HandleCreateColumn(ctx *gin.Context) {
 		return
 	}
 
-	response, err := common.CallRPC(common.ColumnsCreate, map[string]interface{}{
-		"name":     req.Name,
+	response, err := common.CallRPC(common.ColumnsCreate, map[string]any{
+		"title":    req.Title,
 		"boardId":  req.BoardID,
 		"position": req.Position,
 	})
@@ -254,27 +261,24 @@ func HandleCreateColumn(ctx *gin.Context) {
 // @Failure      500      {object}  ErrorResponse    "Internal server error"
 // @Router       /columns [get]
 func HandleGetColumns(ctx *gin.Context) {
-	boardIDStr := ctx.Query("boardId")
-	boardID, err := strconv.ParseUint(boardIDStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid board ID"})
-		return
+	var req GetColumnsRequest
+	if err := ctx.ShouldBindUri(&req); err != nil {
+		if err2 := ctx.ShouldBindQuery(&req); err2 != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 	}
-
-	response, err := common.CallRPC(common.ColumnsGetByBoard, map[string]interface{}{
-		"boardId": uint(boardID),
+	response, err := common.CallRPC(common.ColumnsGetByBoard, map[string]any{
+		"boardId": req.BoardID,
 	})
-
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
 	if !response.Success {
 		ctx.JSON(response.StatusCode, gin.H{"error": response.Error})
 		return
 	}
-
 	ctx.JSON(http.StatusOK, response.Data)
 }
 
@@ -306,9 +310,9 @@ func HandleUpdateColumn(ctx *gin.Context) {
 		return
 	}
 
-	response, err := common.CallRPC(common.ColumnsUpdate, map[string]interface{}{
+	response, err := common.CallRPC(common.ColumnsUpdate, map[string]any{
 		"id":       uint(id),
-		"name":     req.Name,
+		"title":    req.Title,
 		"position": req.Position,
 	})
 
@@ -346,7 +350,7 @@ func HandleDeleteColumn(ctx *gin.Context) {
 		return
 	}
 
-	response, err := common.CallRPC(common.ColumnsDelete, map[string]interface{}{
+	response, err := common.CallRPC(common.ColumnsDelete, map[string]any{
 		"id": uint(id),
 	})
 
